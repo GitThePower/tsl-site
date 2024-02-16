@@ -1,0 +1,30 @@
+{
+  "name": "tsl-site",
+  "version": "0.1.0",
+  "bin": {
+    "tsl-site": "bin/tsl-site.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "cdk": "cdk",
+    "cleanup": "@powershell -NoProfile -ExecutionPolicy Unrestricted -Command ./cleanUp.ps1",
+    "deploy": "tsc && jest -- stack.test.ts && cdk synth && cdk deploy --require-approval never",
+    "test": "tsc && jest && npm run cleanup",
+    "test-one": "jest --"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GitThePower/tsl-site.git"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0",
+    "ts-node": "^10.0.0",
+    "typescript": "^5.3.0"
+  }
+}
