@@ -2,15 +2,14 @@
   "name": "tsl-site",
   "version": "0.1.0",
   "bin": {
-    "tsl-site": "bin/tsl-site.js"
+    "tsl-site": "bin/app.ts"
   },
   "scripts": {
     "build": "tsc",
     "cdk": "cdk",
     "cleanup": "@powershell -NoProfile -ExecutionPolicy Unrestricted -Command ./cleanUp.ps1",
     "deploy": "tsc && jest -- stack.test.ts && cdk synth && cdk deploy --require-approval never",
-    "test": "tsc && jest && npm run cleanup",
-    "test-one": "jest --"
+    "test": "jest"
   },
   "repository": {
     "type": "git",
