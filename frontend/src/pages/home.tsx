@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
@@ -9,14 +9,45 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
+import { TextField } from '@mui/material';
+import { MagicCard } from '../types';
 
 const Home = () => {
-  const [tabValue, setTabValue] = React.useState(0);
+  const [tabValue, setTabValue] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([] as MagicCard[]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchDataFromAPI = async () => {
+      setIsLoading(true);
+      try {
+        const data = await Promise.resolve([{ name: 'Inside Source' }]);
+        setSearchResults(data);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDataFromAPI();
+  }, []); // Empty dependency array: Execute only once on page load
 
   const handleTabChange = (event: React.ChangeEvent<unknown>, newValue: number) => {
     console.log(event);
     setTabValue(newValue);
   };
+
+  let filteredResults = searchResults;
+
+  if (searchTerm) {
+    filteredResults = searchResults.filter((item) => {
+      // Implement your filtering logic based on item properties and searchTerm
+      return item.name.toLowerCase().includes(searchTerm.toLowerCase());
+      // Example: Assuming the data has a 'title' property
+    });
+  }
 
   return (
     <Box sx={{ width: '100%', overflowY: 'auto' }}> {/* Make content scrollable */}
@@ -59,9 +90,24 @@ const Home = () => {
       )}
       {tabValue === 1 && (
         <Box>
-          {/* Your Content for Section 2 Here */}
-          <h2>TBD</h2>
-          <p>Content to go here...</p>
+          <TextField
+            label="Search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            fullWidth
+            margin="normal"
+          />
+          {isLoading ? (
+            <div>Loading...</div>
+          ) : (
+            <ul>
+              {filteredResults.map((item: MagicCard) => (
+                <li key={item.name}>
+                  {item.name}
+                </li>
+              ))}
+            </ul>
+          )}
         </Box>
       )}
       {tabValue === 2 && (

@@ -14,7 +14,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <AppBar position="static">
         <Toolbar>
           <img src={logo} alt="Your Logo" style={{ height: '40px', marginRight: '10px' }} />
-          <Typography variant="h6">TSL Dot Com</Typography>
+          <Typography variant="h6">TSL Site</Typography>
         </Toolbar>
       </AppBar>
     </header>
