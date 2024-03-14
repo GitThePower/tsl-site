@@ -10,7 +10,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import { TextField } from '@mui/material';
-import { MagicCard } from '../types';
+import { MagicCard } from '../../../backend/types';
 
 const Home = () => {
   const [tabValue, setTabValue] = useState(0);
@@ -22,7 +22,7 @@ const Home = () => {
     const fetchDataFromAPI = async () => {
       setIsLoading(true);
       try {
-        const data = await Promise.resolve([{ name: 'Inside Source' }]);
+        const data = await Promise.resolve([{ name: 'Inside Source', count: 5 }]);
         setSearchResults(data);
       } catch (error) {
         console.error('Error fetching data:', error);
