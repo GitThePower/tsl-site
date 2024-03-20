@@ -13,6 +13,7 @@ const MoxfieldBoardSchema = z.object({
   count: z.number(),
   cards: z.record(z.string(), MoxfieldCardSchema),
 });
+export type MoxfieldBoard = z.infer<typeof MoxfieldBoardSchema>;
 export const MoxfieldContentSchema = z.object({
   boards: z.object({
     mainboard: MoxfieldBoardSchema,
