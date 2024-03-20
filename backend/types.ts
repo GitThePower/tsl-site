@@ -1,14 +1,17 @@
 import { z } from 'zod';
 
-export const MagicCardSchema = z.object({
-  name: z.string(),
-  count: z.number(),
-});
-export type MagicCard = z.infer<typeof MagicCardSchema>;
+export const MagicCardPoolSchema = z.record(z.string(), z.number());
+export type MagicCardPool = z.infer<typeof MagicCardPoolSchema>;
 
+const MoxfieldCardSchema = z.object({
+  quantity: z.number(),
+  card: z.object({
+    name: z.string(),
+  }),
+});
 const MoxfieldBoardSchema = z.object({
   count: z.number(),
-  cards: z.unknown(),
+  cards: z.record(z.string(), MoxfieldCardSchema),
 });
 export const MoxfieldContentSchema = z.object({
   boards: z.object({
@@ -17,4 +20,3 @@ export const MoxfieldContentSchema = z.object({
     maybeboard: MoxfieldBoardSchema,
   }),
 });
-export type MoxfieldContent = z.infer<typeof MoxfieldContentSchema>;
