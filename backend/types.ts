@@ -21,3 +21,8 @@ export const MoxfieldContentSchema = z.object({
     maybeboard: MoxfieldBoardSchema,
   }),
 });
+
+export const ResourceLambdaEnvSchema = z.object({
+  DB_TABLE_NAME: z.string(),
+});
+export type ResourceLambdaEnv = z.infer<typeof ResourceLambdaEnvSchema>;

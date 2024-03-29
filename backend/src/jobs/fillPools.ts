@@ -1,29 +1,5 @@
-import { DynamoDBClient, ScanCommand } from "@aws-sdk/client-dynamodb";
 import axios, { AxiosResponse } from "axios";
-import { MagicCardPool, MoxfieldBoard, MoxfieldContentSchema } from "../../../../types";
-
-const ddbClient = new DynamoDBClient({ region: "YOUR_REGION" }); // Replace with your AWS region
-
-
-async function getDecklistIds(tableName: string): Promise<any[]> {
-  const allItems: any[] = [];
-  let lastEvaluatedKey = undefined;
-
-  do {
-      const params = {
-          TableName: tableName,
-          ExclusiveStartKey: lastEvaluatedKey
-      };
-
-      const command = new ScanCommand(params);
-      const response = await ddbClient.send(command);
-
-      allItems.push(...response.Items!); // Assuming your items are not deeply nested
-      lastEvaluatedKey = response.LastEvaluatedKey;
-  } while (lastEvaluatedKey);
-
-  return allItems;
-}
+import { MagicCardPool, MoxfieldBoard, MoxfieldContentSchema } from "../../types";
 
 const getMoxfieldBoards = async (id: string): Promise<MoxfieldBoard[]>  => {
   let result: AxiosResponse<any, any>;
