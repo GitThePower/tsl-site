@@ -1,11 +1,28 @@
-import { Duration } from "aws-cdk-lib";
-import { Architecture, Runtime } from "aws-cdk-lib/aws-lambda";
-import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
-import { Construct } from "constructs";
+import { Duration } from 'aws-cdk-lib';
+import { IRole, ManagedPolicy, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Architecture, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { Construct } from 'constructs';
+import { ResourceLambdaEnv } from '../../src/types';
 
 interface LambdaFunctionProps {
   entry: string;
-  environment: { [key: string]: string };
+  environment: ResourceLambdaEnv;
+  role: IRole;
+}
+
+export class LambdaRole extends Role {
+  constructor(scope: Construct, id: string) {
+    super(scope, id, {
+      assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+      roleName: id,
+    });
+    this.addManagedPolicy(  // Add the Lambda Basic Execution Policy to the Role
+      ManagedPolicy.fromAwsManagedPolicyName(
+        'service-role/AWSLambdaBasicExecutionRole',
+      ),
+    );
+  }
 }
 
 export class LambdaFunction extends NodejsFunction {
@@ -19,6 +36,7 @@ export class LambdaFunction extends NodejsFunction {
       handler: 'handler',
       memorySize: 128,
       retryAttempts: 0,
+      role: props.role,
       runtime: Runtime.NODEJS_20_X,
       timeout: Duration.seconds(10),
     });

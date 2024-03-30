@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from "axios";
-import { MagicCardPool, MoxfieldBoard, MoxfieldContentSchema } from "../../types";
+import { MagicCardPool, MoxfieldBoard, MoxfieldContentSchema } from "../../src/types";
 
 const getMoxfieldBoards = async (id: string): Promise<MoxfieldBoard[]>  => {
   let result: AxiosResponse<any, any>;

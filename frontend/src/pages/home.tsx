@@ -10,19 +10,19 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import { TextField } from '@mui/material';
-import { MagicCard } from '../../../backend/types';
+import { MagicCardPool } from '../../../backend/src/types';
 
 const Home = () => {
   const [tabValue, setTabValue] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState([] as MagicCard[]);
+  const [searchResults, setSearchResults] = useState({} as MagicCardPool);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchDataFromAPI = async () => {
       setIsLoading(true);
       try {
-        const data = await Promise.resolve([{ name: 'Inside Source', count: 5 }]);
+        const data = await Promise.resolve({ 'Inside Source': 5 });
         setSearchResults(data);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -42,11 +42,13 @@ const Home = () => {
   let filteredResults = searchResults;
 
   if (searchTerm) {
-    filteredResults = searchResults.filter((item) => {
+    filteredResults = Object.keys(searchResults).reduce((prev: MagicCardPool, key: string) => {
       // Implement your filtering logic based on item properties and searchTerm
-      return item.name.toLowerCase().includes(searchTerm.toLowerCase());
-      // Example: Assuming the data has a 'title' property
-    });
+      if(key.toLowerCase().includes(searchTerm.toLowerCase())) {
+        prev[key] = searchResults[key];
+      }
+      return prev;
+    }, {} as MagicCardPool);
   }
 
   return (
@@ -101,9 +103,9 @@ const Home = () => {
             <div>Loading...</div>
           ) : (
             <ul>
-              {filteredResults.map((item: MagicCard) => (
-                <li key={item.name}>
-                  {item.name}
+              {Object.keys(filteredResults).map((cardName: string) => (
+                <li key={cardName}>
+                  {cardName}
                 </li>
               ))}
             </ul>

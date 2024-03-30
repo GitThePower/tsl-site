@@ -1,8 +1,9 @@
 import { DeleteItemCommand, DynamoDBClient, GetItemCommand, PutItemCommand, ReturnValue, ScanCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import { ZodError, ZodObject, ZodRawShape } from "zod";
-import { ResourceLambdaEnvSchema } from "../../types";
+import { v4 } from 'uuid';
+import { SafeParseReturnType, ZodEffects, ZodTypeAny } from "zod";
+import { ResourceLambdaEnvSchema } from "../../src/types";
 
 let _dynamoDbClient: DynamoDBClient | null;
 const getDdbClient = (): DynamoDBClient => {
@@ -13,40 +14,82 @@ const getDdbClient = (): DynamoDBClient => {
 };
 
 // **Create (Put)**
-export const createItem = async (tableName: string, item: Record<string, any>): Promise<void> => {
+export const createItem = async (tableName: string, parsedBody: SafeParseReturnType<any, any> | null): Promise<APIGatewayProxyResult> => {
+  if (!parsedBody || !parsedBody.success) {
+    return {
+      statusCode: 400,
+      body: `BodyErr: ${(parsedBody) ? parsedBody.error : 'body is not defined'}`,
+    };
+  }
   const params = {
     TableName: tableName,
-    Item: marshall(item)
+    Item: marshall({
+      id: v4(),
+      ...parsedBody.data,
+    }),
   };
   try {
     const client = getDdbClient();
     await client.send(new PutItemCommand(params));
+    return {
+      statusCode: 200,
+      body: 'Successfully created item!',
+    };
   } catch (err) {
-    console.error("Error adding item:", err);
+    console.error(`Error adding item: ${err}`);
+    return {
+      statusCode: 500,
+      body: 'Error adding item - check logs',
+    };
   }
 };
 
 // **Read (Get)**
-export const getItem = async (tableName: string, key: Record<string, any>): Promise<Record<string, any>> => {
+export const getItem = async (tableName: string, parsedQueryStringParams: SafeParseReturnType<any, any> | null): Promise<APIGatewayProxyResult> => {
+  if (!parsedQueryStringParams || !parsedQueryStringParams.success) {
+    return {
+      statusCode: 400,
+      body: `QueryStringParametersErr: ${(parsedQueryStringParams) ? parsedQueryStringParams.error : 'queryStringParameters is not defined'}`,
+    };
+  }
   const params = {
     TableName: tableName,
-    Key: marshall(key),
+    Key: marshall(parsedQueryStringParams.data),
   };
-  let result: Record<string, any> = {};
   try {
     const client = getDdbClient();
     const { Item } = await client.send(new GetItemCommand(params));
     if (Item) {
-      result = unmarshall(Item);
+      return {
+        statusCode: 200,
+        body: JSON.stringify(unmarshall(Item)),
+      };
     }
+    return {
+      statusCode: 404,
+      body: 'Item not found',
+    };
   } catch (err) {
-    console.error("Error retrieving item:", err);
+    console.error(`Error retrieving item: ${err}`);
+    return {
+      statusCode: 500,
+      body: 'Error retrieving item - check logs',
+    };
   }
-  return result;
 };
 
 // **Update**
-export const updateItem = async (tableName: string, key: Record<string, any>, update: Record<string, any>): Promise<Record<string, any>> => {
+export const updateItem = async (tableName: string, parsedQueryStringParams: SafeParseReturnType<any, any> | null, parsedBody: SafeParseReturnType<any, any> | null): Promise<APIGatewayProxyResult> => {
+  if (!parsedBody || !parsedBody.success || !parsedQueryStringParams || !parsedQueryStringParams.success) {
+    const bodyErr = (!parsedBody) ? 'body is not defined' : (!parsedBody.success) ? parsedBody.error : '';
+    const queryStringParametersErr = (!parsedQueryStringParams) ? 'queryStringParameters is not defined' : (!parsedQueryStringParams.success) ? parsedQueryStringParams.error : '';
+    return {
+      statusCode: 400,
+      body: `BodyErr: ${bodyErr}\nQueryStringParametersErr: ${queryStringParametersErr}`,
+    };
+  }
+
+  const update = parsedBody.data;
   let UpdateExpression = 'SET';
   Object.keys(update).map((key) => {
     UpdateExpression = UpdateExpression + ` ${key} = :${key},`;
@@ -61,41 +104,67 @@ export const updateItem = async (tableName: string, key: Record<string, any>, up
 
   const params = {
     TableName: tableName,
-    Key: marshall(key),
+    Key: marshall(parsedQueryStringParams.data),
     UpdateExpression,
     ExpressionAttributeValues,
     ReturnValues: 'ALL_NEW' as ReturnValue,
   };
-  let result: Record<string, any> = {};
   try {
     const client = getDdbClient();
     const { Attributes } = await client.send(new UpdateItemCommand(params));
     if (Attributes) {
-      result = unmarshall(Attributes);
+      return {
+        statusCode: 200,
+        body: JSON.stringify(unmarshall(Attributes)),
+      };
+    } else {
+      return {
+        statusCode: 404,
+        body: 'Item not found',
+      };
     }
   } catch (err) {
-    console.error("Error updating item:", err);
+    console.error(`Error updating item: ${err}`);
+    return {
+      statusCode: 500,
+      body: 'Error updating item - check logs',
+    };
   }
-  return result;
 };
 
 // **Delete**
-export const deleteItem = async (tableName: string, key: Record<string, any>): Promise<Record<string, any>> => {
+export const deleteItem = async (tableName: string, parsedQueryStringParams: SafeParseReturnType<any, any> | null): Promise<APIGatewayProxyResult> => {
+  if (!parsedQueryStringParams || !parsedQueryStringParams.success) {
+    return {
+      statusCode: 400,
+      body: `QueryStringParametersErr: ${(parsedQueryStringParams) ? parsedQueryStringParams.error : 'queryStringParameters is not defined'}`,
+    };
+  }
   const params = {
     TableName: tableName,
-    Key: marshall(key),
+    Key: marshall(parsedQueryStringParams.data),
+    ReturnValues: 'ALL_OLD' as ReturnValue,
   };
-  let result: Record<string, any> = {};
   try {
     const client = getDdbClient();
     const { Attributes } = await client.send(new DeleteItemCommand(params));
     if (Attributes) {
-      result = unmarshall(Attributes);
+      return {
+        statusCode: 200,
+        body: JSON.stringify(unmarshall(Attributes)),
+      };
     }
+    return {
+      statusCode: 404,
+      body: 'Item not found',
+    };
   } catch (err) {
-    console.error("Error deleting item:", err);
+    console.error(`Error deleting item: ${err}`);
+    return {
+      statusCode: 500,
+      body: 'Error deleting item - check logs',
+    };
   }
-  return result;
 };
 
 // **Scan (List)**
@@ -116,63 +185,35 @@ export const listItems = async (tableName: string): Promise<Record<string, any>[
   return results;
 };
 
-export const ddbCrudHandler = async (event: APIGatewayProxyEvent, itemSchema: ZodObject<ZodRawShape>): Promise<APIGatewayProxyResult> => {
-  const result = {
-    statusCode: 500,
-    body: 'Internal Error',
-  };
+export const ddbCrudHandler = async (event: APIGatewayProxyEvent, itemSchema: ZodEffects<ZodTypeAny>): Promise<APIGatewayProxyResult> => {
   try {
-    const { body, httpMethod, queryStringParameters } = event;
     const { DB_TABLE_NAME } = ResourceLambdaEnvSchema.parse(process.env);
-    const validBody = itemSchema.safeParse(body);
-    const validQueryStringParams = itemSchema.safeParse(queryStringParameters);
-    if (!validBody.success || !validQueryStringParams.success) {
-      const bodyErr: ZodError | boolean = (!validBody.success) ? validBody.error : false;
-      const queryStringParametersErr: ZodError | boolean = (!validQueryStringParams.success) ? validQueryStringParams.error : false;
-      const errMsg = `BodyErr: ${bodyErr}\nQueryStringParametersErr: ${queryStringParametersErr}`;
-      result.statusCode = 400;
-      result.body = errMsg;
-      throw new Error(errMsg);
-    }
-  
-    if (httpMethod === 'GET') {
-      const item = await getItem(DB_TABLE_NAME, validQueryStringParams.data);
-      if (Object.keys(item).length > 0) {
-        result.statusCode = 200;
-        result.body = JSON.stringify(item);
-      } else {
-        result.statusCode = 404;
-        result.body = 'Item not found';
-      }
-    } else if (httpMethod === 'POST') {
-      await createItem(DB_TABLE_NAME, validBody.data);
-      result.statusCode = 200;
-      result.body = 'Successfully created item!';
-    } else if (httpMethod === 'PUT') {
-      const update = await updateItem(DB_TABLE_NAME, validQueryStringParams.data, validBody.data);
-      if (Object.keys(update).length > 0) {
-        result.statusCode = 200;
-        result.body = JSON.stringify(update);
-      } else {
-        result.statusCode = 404;
-        result.body = 'Item not found';
-      }
-    } else if (httpMethod === 'DELETE') {
-      const deletedItem = await deleteItem(DB_TABLE_NAME, validQueryStringParams.data);
-      if (Object.keys(deletedItem).length > 0) {
-        result.statusCode = 200;
-        result.body = JSON.stringify(deletedItem);
-      } else {
-        result.statusCode = 404;
-        result.body = 'Item not found';
-      }
-    } else {
-      result.statusCode = 405;
-      result.body = 'Method Not Allowed';
-    }
-  } catch (e) {
-    console.error(e);
-  }
+    const { body, httpMethod, queryStringParameters } = event;
 
-  return result;
+    if (httpMethod === 'GET') {
+      const parsedQueryStringParams = (queryStringParameters) ? itemSchema.safeParse(queryStringParameters) : null;
+      return await getItem(DB_TABLE_NAME, parsedQueryStringParams);
+    } else if (httpMethod === 'POST') {
+      const parsedBody = (body) ? itemSchema.safeParse(JSON.parse(body)) : null;
+      return await createItem(DB_TABLE_NAME, parsedBody);
+    } else if (httpMethod === 'PUT') {
+      const parsedQueryStringParams = (queryStringParameters) ? itemSchema.safeParse(queryStringParameters) : null;
+      const parsedBody = (body) ? itemSchema.safeParse(JSON.parse(body)) : null;
+      return await updateItem(DB_TABLE_NAME, parsedQueryStringParams, parsedBody);
+    } else if (httpMethod === 'DELETE') {
+      const parsedQueryStringParams = (queryStringParameters) ? itemSchema.safeParse(queryStringParameters) : null;
+      return await deleteItem(DB_TABLE_NAME, parsedQueryStringParams);
+    } else {
+      return {
+        statusCode: 405,
+        body: 'Method Not Allowed',
+      };
+    }
+  } catch (err) {
+    console.error(err);
+    return {
+      statusCode: 500,
+      body: 'Internal Error - check logs',
+    };
+  }
 };
