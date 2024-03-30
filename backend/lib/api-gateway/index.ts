@@ -1,17 +1,21 @@
-import { DomainNameOptions, LambdaIntegration, RestApi } from "aws-cdk-lib/aws-apigateway";
+import { DomainName, EndpointType, LambdaIntegration, RestApi } from "aws-cdk-lib/aws-apigateway";
+import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { AnyPrincipal, Effect, PolicyDocument, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { IFunction } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
+import config from "../config";
+import { ARecord, IHostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
+import { ApiGatewayDomain } from "aws-cdk-lib/aws-route53-targets";
 
 interface ApiGatewayProps {
-  domainName: DomainNameOptions;
+  domainCert: ICertificate;
+  domainHostedZone: IHostedZone;
 }
 
 export class ApiGateway extends RestApi {
   constructor(scope: Construct, id: string, props: ApiGatewayProps) {
     super(scope, id, {
       cloudWatchRole: false,
-      domainName: props.domainName,
       policy: new PolicyDocument({
         statements: [
           new PolicyStatement({
@@ -23,6 +27,23 @@ export class ApiGateway extends RestApi {
         ]
       }),
       restApiName: id
+    });
+    // Create the custom domain name with subdomain
+    const customDomain = new DomainName(scope, `${id}-api-custom-domain`, {
+      certificate: props.domainCert,
+      domainName: config.domainNameApi,
+      endpointType: EndpointType.REGIONAL,
+    });
+    // Create API mapping
+    customDomain.addBasePathMapping(this, {
+      basePath: '',
+      stage: this.deploymentStage,
+    });
+    // Create Route 53 Record to point to the subdomain 
+    new ARecord(scope, `${id}-api-custom-domain-aRecord`, {
+      recordName: config.domainNameApi,
+      target: RecordTarget.fromAlias(new ApiGatewayDomain(customDomain)),
+      zone: props.domainHostedZone,
     });
   }
 

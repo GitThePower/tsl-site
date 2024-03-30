@@ -14,10 +14,8 @@ export class TslDotComStack extends cdk.Stack {
     const website = new Website(this, `${id}-site`);
 
     const restApi = new ApiGateway(this, `${id}-api`, {
-      domainName: {
-        domainName: config.domainName,
-        certificate: website.httpsCertificate,
-      },
+        domainCert: website.httpsCertificate,
+        domainHostedZone: website.hostedZone,
     });
 
     const RESOURCES = ['user', 'league'];
