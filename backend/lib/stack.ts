@@ -1,11 +1,16 @@
 import * as cdk from 'aws-cdk-lib';
+import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
-import { ApiGateway } from './api-gateway';
+import { Api } from './api';
 import { DynamoDBTable } from './dynamodb';
 import { LambdaFunction, LambdaRole } from './lambda';
 import Website from './website';
 import { ResourceLambdaEnv } from '../src/types';
-import config from './config';
+
+interface RestfulResourceProperties {
+  lambda: LambdaFunction;
+  table: DynamoDBTable;
+}
 
 export class TslDotComStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -13,16 +18,20 @@ export class TslDotComStack extends cdk.Stack {
 
     const website = new Website(this, `${id}-site`);
 
-    const restApi = new ApiGateway(this, `${id}-api`, {
+    const restApi = new Api(this, `${id}-api`, {
         domainCert: website.httpsCertificate,
         domainHostedZone: website.hostedZone,
     });
 
-    const RESOURCES = ['user', 'league'];
-    RESOURCES.map(resource => {
-      const table = new DynamoDBTable(this, `${id}-${resource}-table`);
+    const createRestfulResource = (resource: string): RestfulResourceProperties => {
+      const table = new DynamoDBTable(this, `${id}-${resource}-table`, {
+        partitionKey: {
+          name: `${resource}name`,
+          type: AttributeType.STRING,
+        },
+      });
       const lambdaEnv: ResourceLambdaEnv = {
-        DB_TABLE_NAME: table.tableName
+        DB_TABLE_NAME: table.tableName,
       };
       const lambdaRole = new LambdaRole(this, `${id}-${resource}-role`);
       const lambda = new LambdaFunction(this, `${id}-${resource}-accessor`, {
@@ -32,6 +41,15 @@ export class TslDotComStack extends cdk.Stack {
       });
       table.grantFullAccess(lambdaRole);
       restApi.createLambdaBackedResource(resource, lambda);
-    });
+    
+      return {
+        lambda,
+        table,
+      };
+    };
+
+    createRestfulResource('league');
+
+    createRestfulResource('user');
   }
 }

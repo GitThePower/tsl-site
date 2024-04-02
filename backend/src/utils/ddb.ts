@@ -23,10 +23,7 @@ export const createItem = async (tableName: string, parsedBody: SafeParseReturnT
   }
   const params = {
     TableName: tableName,
-    Item: marshall({
-      id: v4(),
-      ...parsedBody.data,
-    }),
+    Item: marshall(parsedBody.data),
   };
   try {
     const client = getDdbClient();
