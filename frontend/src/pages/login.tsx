@@ -8,10 +8,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   const handleLoginClick = () => {
-    // Your login logic...
-
-    // After successful login (optional):
-    navigate('/home');
+    navigate('/');
   };
 
   return (
