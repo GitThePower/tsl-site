@@ -1,0 +1,9 @@
+.header-toolbar { /* A class for the Toolbar */
+  display: flex;
+  justify-content: space-between; /* Distribute space between elements */
+  align-items: center; /* Vertically center elements */
+}
+.header-toolbar-logo {
+  height: 40px;
+  margin-right: 10px;
+}
