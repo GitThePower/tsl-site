@@ -5,8 +5,8 @@ import {
 } from '@mui/material';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import logo from './assets/vite.svg';
 import LoginButton from './components/LoginButton';
+import Logo from './components/Logo';
 import Home from './pages/home';
 import Login from './pages/login';
 import './main.css';
@@ -16,7 +16,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <header>
       <AppBar position="static">
         <Toolbar className='header-toolbar'>
-          <img src={logo} alt="Your Logo" className='header-toolbar-logo' />
+          <Logo />
           <Typography variant="h6">TSL Site</Typography>
           <LoginButton />
         </Toolbar>
