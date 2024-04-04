@@ -1,26 +1,35 @@
 import { Box, Button, Grid, TextField } from '@mui/material';
+import { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChangeEvent, useState } from 'react';
+import GlobalStateContext from '../components/GlobalStateContext';
 
 const Login = () => {
+  const globalStateContext = useContext(GlobalStateContext);
   const navigate = useNavigate();
-
-  // Create state for username and password
-  const [username, setUsername] = useState('');
+  const [isLoading, setisLoading] = useState(false);
+  const [loginClicked, setLoginClicked] = useState(false);
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
 
-  const handleUsernameChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setUsername(event.target.value);
-  };
-
-  const handlePasswordChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setPassword(event.target.value);
-  };
+  useEffect(() => {
+    const getUser = async () => {
+      globalStateContext.setIsLoggedIn(true);
+      setisLoading(false);
+    };
+    if (loginClicked && password && username) {
+      setisLoading(true);
+      getUser()
+      if (!isLoading) {
+        setLoginClicked(false);
+        setPassword('');
+        setUsername('');
+        navigate('/');
+      }
+    }
+  }, [globalStateContext, isLoading, loginClicked, navigate, password, username]);
 
   const handleLoginClick = () => {
-    // Include your login validation logic here using the username and password from the state
-
-    navigate('/');
+    setLoginClicked(true);
   };
 
   return (
@@ -33,8 +42,8 @@ const Login = () => {
               margin="normal"
               variant="outlined"
               fullWidth
-              value={username} // Bind input value to the state
-              onChange={handleUsernameChange} // Update state on change 
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
             />
             <TextField
               label="Password"
@@ -42,10 +51,15 @@ const Login = () => {
               margin="normal"
               variant="outlined"
               fullWidth
-              value={password} 
-              onChange={handlePasswordChange} 
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
             />
-            <Button variant="contained" type="submit" fullWidth onClick={handleLoginClick}>
+            <Button
+              variant="contained"
+              type="submit"
+              fullWidth
+              onClick={handleLoginClick}
+            >
               Login
             </Button>
           </form>
