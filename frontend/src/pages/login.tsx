@@ -1,8 +1,10 @@
+import {
+  Box,
+  Button,
+  Grid,
+  TextField,
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Grid from '@mui/material/Grid';
-import Box from '@mui/material/Box';
 
 const Login = () => {
   const navigate = useNavigate();

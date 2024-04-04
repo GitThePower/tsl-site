@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
-import Tabs from '@mui/material/Tabs';
-import Tab from '@mui/material/Tab';
-import Box from '@mui/material/Box';
-import StandingsTable from '../components/StandingsTable';
+import {
+  Box,
+  Tab,
+  Tabs,
+} from '@mui/material';
+import { ChangeEvent, useState } from 'react';
 import CardPool from '../components/CardPool';
+import StandingsTable from '../components/StandingsTable';
 
 const Home = () => {
   const [tabValue, setTabValue] = useState(0);
 
-  const handleTabChange = (event: React.ChangeEvent<unknown>, newValue: number) => {
+  const handleTabChange = (event: ChangeEvent<unknown>, newValue: number) => {
     console.log(event);
     setTabValue(newValue);
   };
