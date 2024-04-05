@@ -25,7 +25,6 @@ const Home = () => {
       >
         <Tab label="Standings" />
         <Tab label="Pool" />
-        <Tab label="Activity" />
         <Tab label="Reporting" />
       </Tabs>
       {tabValue === 0 && (
@@ -35,9 +34,6 @@ const Home = () => {
         <CardPool />
       )}
       {tabValue === 2 && (
-        <Box>TBD</Box>
-      )}
-      {tabValue === 3 && (
         <Box>TBD</Box>
       )}
     </Box>
