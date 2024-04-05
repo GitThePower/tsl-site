@@ -1,35 +1,30 @@
 import { Box, Button, Grid, TextField } from '@mui/material';
-import { useContext, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import GlobalStateContext from '../components/GlobalStateContext';
 
 const Login = () => {
-  const globalStateContext = useContext(GlobalStateContext);
   const navigate = useNavigate();
-  const [isLoading, setisLoading] = useState(false);
-  const [loginClicked, setLoginClicked] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
 
-  useEffect(() => {
-    const getUser = async () => {
-      globalStateContext.setIsLoggedIn(true);
-      setisLoading(false);
-    };
-    if (loginClicked && password && username) {
-      setisLoading(true);
-      getUser()
-      if (!isLoading) {
-        setLoginClicked(false);
-        setPassword('');
-        setUsername('');
-        navigate('/');
-      }
-    }
-  }, [globalStateContext, isLoading, loginClicked, navigate, password, username]);
+  const handleSubmit = async () => {
+    setIsLoading(true);
 
-  const handleLoginClick = () => {
-    setLoginClicked(true);
+    try {
+      // const response = await authenticateUser(username, password); // Your async function
+      localStorage.setItem('tavernSealedLeagueDotComToken', 'true');
+      if (localStorage.getItem('tavernSealedLeagueDotComToken')) { // response success
+        // Successful login
+        navigate('/');
+      } else {
+        // Handle failed login, display error message
+      }
+    } catch (error) {
+      // Handle errors, display error message
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -58,9 +53,9 @@ const Login = () => {
               variant="contained"
               type="submit"
               fullWidth
-              onClick={handleLoginClick}
+              onClick={handleSubmit}
             >
-              Login
+              {isLoading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
         </Grid>

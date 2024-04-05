@@ -1,11 +1,11 @@
 import { Button } from '@mui/material';
-// import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const ProfileButton = () => {
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const handleProfileButtonButtonClick = () => {
-    // navigate('/');
+    navigate('/');
   };
 
   return (
