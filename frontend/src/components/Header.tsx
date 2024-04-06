@@ -7,7 +7,7 @@ import { useLocation } from 'react-router-dom';
 import LoginButton from './LoginButton';
 import Logo from './Logo';
 import ProfileButton from './ProfileButton';
-import { config } from '../../../local-config';
+import { config } from '../../../local-config/index.ts';
 
 const Header = () => {
   const location = useLocation();

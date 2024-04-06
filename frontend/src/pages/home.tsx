@@ -6,7 +6,7 @@ import {
 import { ChangeEvent, useState } from 'react';
 import CardPool from '../components/CardPool';
 import StandingsTable from '../components/StandingsTable';
-import { config } from '../../../local-config';
+import { config } from '../../../local-config/index.ts';
 
 const Home = () => {
   const [tabValue, setTabValue] = useState(0);

@@ -1,7 +1,7 @@
 import { Box, Button, Grid } from '@mui/material';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { config } from '../../../local-config';
+import { config } from '../../../local-config/index.ts';
 
 const Profile = () => {
   const navigate = useNavigate();
