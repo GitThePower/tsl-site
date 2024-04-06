@@ -19,12 +19,6 @@ const StandingsTable = () => {
               <TableCell sx={{ textAlign: 'center' }}>Rank</TableCell>
               <TableCell sx={{ textAlign: 'center' }}>Name</TableCell>
               <TableCell sx={{ textAlign: 'center' }}>Weekly Win %</TableCell>
-              {/* <TableCell sx={{ textAlign: 'center' }}>
-                Round 1 <br /> W - L
-              </TableCell>
-              <TableCell sx={{ textAlign: 'center' }}>
-                Round 2 <br /> W - L
-              </TableCell> */}
               <TableCell sx={{ textAlign: 'center' }}>Overall Win %</TableCell>
             </TableRow>
           </TableHead>

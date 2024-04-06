@@ -1,6 +1,7 @@
 import { Box, Button, Grid } from '@mui/material';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { config } from '../../../local-config';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -11,8 +12,8 @@ const Profile = () => {
 
     try {
       // const response = await authenticateUser(username, password); // Your async function
-      localStorage.removeItem('tavernSealedLeagueDotComToken');
-      if (!localStorage.getItem('tavernSealedLeagueDotComToken')) { // response success
+      localStorage.removeItem(config.localStorageKey);
+      if (!localStorage.getItem(config.localStorageKey)) { // response success
         // Successful login
         navigate('/');
       } else {

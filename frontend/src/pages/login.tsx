@@ -1,6 +1,7 @@
 import { Box, Button, Grid, TextField } from '@mui/material';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { config } from '../../../local-config';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -13,8 +14,8 @@ const Login = () => {
 
     try {
       // const response = await authenticateUser(username, password); // Your async function
-      localStorage.setItem('tavernSealedLeagueDotComToken', 'true');
-      if (localStorage.getItem('tavernSealedLeagueDotComToken')) { // response success
+      localStorage.setItem(config.localStorageKey, 'true');
+      if (localStorage.getItem(config.localStorageKey)) { // response success
         // Successful login
         navigate('/');
       } else {

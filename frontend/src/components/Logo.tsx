@@ -1,7 +1,6 @@
 import { Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import logo from '../assets/vite.svg';
-import '../main.css';
 
 const Logo = () => {
   const navigate = useNavigate();
@@ -12,7 +11,7 @@ const Logo = () => {
 
   return (
     <Button onClick={handleClick}>
-      <img src={logo} alt='Your Logo' className='header-toolbar-logo' />
+      <img src={logo} alt='Your Logo' style={{ 'height': '40px', 'marginRight': '10px' }} />
     </Button>
   );
 }
