@@ -25,7 +25,9 @@ const Home = () => {
       >
         <Tab label="Standings" />
         <Tab label="Pool" />
-        <Tab label="Reporting" />
+        {localStorage.getItem('tavernSealedLeagueDotComToken') && (
+          <Tab label="Reporting" />
+        )}
       </Tabs>
       {tabValue === 0 && (
         <StandingsTable />
