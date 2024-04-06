@@ -13,12 +13,12 @@ const Header = () => {
   const location = useLocation();
 
   return (
-    <AppBar position="static">
+    <AppBar position='static'>
       <Toolbar className='header-toolbar'>
         <Logo />
-        <Typography variant="h6">TSL Site</Typography>
+        <Typography variant='h6'>TSL Site</Typography>
         {
-          (location.pathname === '/login') ?
+          (location.pathname === '/login' || location.pathname === '/profile') ?
             <div /> :
             (localStorage.getItem('tavernSealedLeagueDotComToken')) ?
               <ProfileButton /> :

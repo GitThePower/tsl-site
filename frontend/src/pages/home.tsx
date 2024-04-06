@@ -20,13 +20,13 @@ const Home = () => {
       <Tabs
         value={tabValue}
         onChange={handleTabChange}
-        variant="scrollable"
-        scrollButtons="auto"
+        variant='scrollable'
+        scrollButtons='auto'
       >
-        <Tab label="Standings" />
-        <Tab label="Pool" />
+        <Tab label='Standings' />
+        <Tab label='Pool' />
         {localStorage.getItem('tavernSealedLeagueDotComToken') && (
-          <Tab label="Reporting" />
+          <Tab label='Reporting' />
         )}
       </Tabs>
       {tabValue === 0 && (

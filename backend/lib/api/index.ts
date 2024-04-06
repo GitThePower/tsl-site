@@ -1,10 +1,10 @@
-import { DomainName, EndpointType, IResource, LambdaIntegration, RestApi } from "aws-cdk-lib/aws-apigateway";
-import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
-import { AnyPrincipal, Effect, PolicyDocument, PolicyStatement } from "aws-cdk-lib/aws-iam";
-import { IFunction } from "aws-cdk-lib/aws-lambda";
-import { ARecord, IHostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
-import { ApiGatewayDomain } from "aws-cdk-lib/aws-route53-targets";
-import { Construct } from "constructs";
+import { DomainName, EndpointType, IResource, LambdaIntegration, RestApi } from 'aws-cdk-lib/aws-apigateway';
+import { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
+import { AnyPrincipal, Effect, PolicyDocument, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
+import { ARecord, IHostedZone, RecordTarget } from 'aws-cdk-lib/aws-route53';
+import { ApiGatewayDomain } from 'aws-cdk-lib/aws-route53-targets';
+import { Construct } from 'constructs';
 import config from '../config';
 
 interface ApiProps {

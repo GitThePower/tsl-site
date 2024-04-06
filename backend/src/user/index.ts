@@ -1,6 +1,6 @@
-import { APIGatewayProxyEvent } from "aws-lambda";
+import { APIGatewayProxyEvent } from 'aws-lambda';
 import { ddbCrudHandler } from '../utils/ddb';
-import { z } from "zod";
+import { z } from 'zod';
 
 const schema = z.object({
   id: z.string(),
@@ -11,7 +11,7 @@ const schema = z.object({
 .refine(
   (obj: Record<string | number | symbol, unknown>) =>
     Object.values(obj).some(v => v !== undefined),
-  { message: "One of the fields must be defined" },
+  { message: 'One of the fields must be defined' },
 );
 
 export const handler = (event: APIGatewayProxyEvent) => ddbCrudHandler(event, schema);

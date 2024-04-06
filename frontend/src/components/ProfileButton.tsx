@@ -9,7 +9,7 @@ const ProfileButton = () => {
   };
 
   return (
-    <Button variant="contained" color="primary" onClick={handleProfileButtonButtonClick}>
+    <Button variant='contained' color='primary' onClick={handleProfileButtonButtonClick}>
       Profile
     </Button>
   );

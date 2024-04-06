@@ -9,7 +9,7 @@ const LoginButton = () => {
   };
 
   return (
-    <Button variant="contained" color="primary" onClick={handleLoginButtonClick}>
+    <Button variant='contained' color='primary' onClick={handleLoginButtonClick}>
       Login
     </Button>
   );

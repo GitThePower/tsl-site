@@ -1,9 +1,9 @@
-import { DeleteItemCommand, DynamoDBClient, GetItemCommand, PutItemCommand, ReturnValue, ScanCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
-import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { DeleteItemCommand, DynamoDBClient, GetItemCommand, PutItemCommand, ReturnValue, ScanCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
+import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { v4 } from 'uuid';
-import { SafeParseReturnType, ZodEffects, ZodTypeAny } from "zod";
-import { ResourceLambdaEnvSchema } from "../../src/types";
+import { SafeParseReturnType, ZodEffects, ZodTypeAny } from 'zod';
+import { ResourceLambdaEnvSchema } from '../../src/types';
 
 let _dynamoDbClient: DynamoDBClient | null;
 const getDdbClient = (): DynamoDBClient => {
@@ -177,7 +177,7 @@ export const listItems = async (tableName: string): Promise<Record<string, any>[
       results = Items.map((item) => unmarshall(item));
     }
   } catch (err) {
-    console.error("Error listing items:", err);
+    console.error('Error listing items:', err);
   }
   return results;
 };

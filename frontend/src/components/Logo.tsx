@@ -12,7 +12,7 @@ const Logo = () => {
 
   return (
     <Button onClick={handleClick}>
-      <img src={logo} alt="Your Logo" className='header-toolbar-logo' />
+      <img src={logo} alt='Your Logo' className='header-toolbar-logo' />
     </Button>
   );
 }

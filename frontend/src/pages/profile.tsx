@@ -26,13 +26,13 @@ const Profile = () => {
   };
 
   return (
-    <Box className="container">
-      <Grid container spacing={3} justifyContent="center">
-        <Grid item xs={12} sm={6} alignSelf="center">
+    <Box className='container'>
+      <Grid container spacing={3} justifyContent='center'>
+        <Grid item xs={12} sm={6} alignSelf='center'>
           <form>
             <Button
-              variant="contained"
-              type="submit"
+              variant='contained'
+              type='submit'
               fullWidth
               onClick={handleSubmit}
             >

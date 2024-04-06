@@ -42,11 +42,11 @@ const CardPool = () => {
   return (
     <Box sx={{ width: '100%', overflowY: 'auto' }}>
       <TextField
-        label="Search"
+        label='Search'
         value={searchTerm}
         onChange={(event) => setSearchTerm(event.target.value)}
         fullWidth
-        margin="normal"
+        margin='normal'
       />
       {isLoading ? (
         <div>Loading...</div>

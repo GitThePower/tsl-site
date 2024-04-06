@@ -28,30 +28,30 @@ const Login = () => {
   };
 
   return (
-    <Box className="container">
-      <Grid container spacing={3} justifyContent="center">
-        <Grid item xs={12} sm={6} alignSelf="center">
+    <Box className='container'>
+      <Grid container spacing={3} justifyContent='center'>
+        <Grid item xs={12} sm={6} alignSelf='center'>
           <form>
             <TextField
-              label="Username"
-              margin="normal"
-              variant="outlined"
+              label='Username'
+              margin='normal'
+              variant='outlined'
               fullWidth
               value={username}
               onChange={(event) => setUsername(event.target.value)}
             />
             <TextField
-              label="Password"
-              type="password"
-              margin="normal"
-              variant="outlined"
+              label='Password'
+              type='password'
+              margin='normal'
+              variant='outlined'
               fullWidth
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
             <Button
-              variant="contained"
-              type="submit"
+              variant='contained'
+              type='submit'
               fullWidth
               onClick={handleSubmit}
             >
