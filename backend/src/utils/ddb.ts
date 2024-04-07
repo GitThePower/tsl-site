@@ -3,6 +3,7 @@ import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { SafeParseReturnType, ZodEffects, ZodTypeAny } from 'zod';
 import { ResourceLambdaEnvSchema } from '../../src/types';
+import config from '../../lib/config';
 
 let _dynamoDbClient: DynamoDBClient | null;
 const getDdbClient = (): DynamoDBClient => {
@@ -46,6 +47,9 @@ export const getItem = async (tableName: string, parsedQueryStringParams: SafePa
     return {
       statusCode: 400,
       body: `QueryStringParametersErr: ${(parsedQueryStringParams) ? parsedQueryStringParams.error : 'queryStringParameters is not defined'}`,
+      headers: {
+        'Access-Control-Allow-Origin': `https://${config.domainName}`,
+      },
     };
   }
   const params = {
@@ -59,17 +63,26 @@ export const getItem = async (tableName: string, parsedQueryStringParams: SafePa
       return {
         statusCode: 200,
         body: JSON.stringify(unmarshall(Item)),
+        headers: {
+          'Access-Control-Allow-Origin': `https://${config.domainName}`,
+        },
       };
     }
     return {
       statusCode: 404,
       body: 'Item not found',
+      headers: {
+        'Access-Control-Allow-Origin': `https://${config.domainName}`,
+      },
     };
   } catch (err) {
     console.error(`Error retrieving item: ${err}`);
     return {
       statusCode: 500,
       body: 'Error retrieving item - check logs',
+      headers: {
+        'Access-Control-Allow-Origin': `https://${config.domainName}`,
+      },
     };
   }
 };

@@ -56,6 +56,10 @@ export class Api extends RestApi {
     resource.addMethod('GET', lambdaIntegration);          // R
     resource.addMethod('PUT', lambdaIntegration);          // U
     resource.addMethod('DELETE', lambdaIntegration);       // D
+    resource.addCorsPreflight({
+      allowOrigins: [`https://${config.domainName}`, `https://${config.domainNameWww}`],
+      allowMethods: ['POST', 'GET', 'PUT', 'DELETE'],
+    });
 
     return resource;
   }

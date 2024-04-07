@@ -10,7 +10,7 @@ test('Stack should have the following resource counts', () => {
   const template = Template.fromStack(stack);
 
 
-  template.resourceCountIs('AWS::ApiGateway::Method', 8);
+  template.resourceCountIs('AWS::ApiGateway::Method', 10);
   template.resourceCountIs('AWS::ApiGateway::Resource', 2);
   template.resourceCountIs('AWS::ApiGateway::RestApi', 1);
   template.resourceCountIs('AWS::DynamoDB::Table', 2);
