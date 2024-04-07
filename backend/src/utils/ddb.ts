@@ -13,13 +13,20 @@ const getDdbClient = (): DynamoDBClient => {
   return _dynamoDbClient;
 };
 
+const getResponse = (statusCode: number, body: string): APIGatewayProxyResult => {
+  return {
+    body,
+    headers: {
+      'Access-Control-Allow-Origin': `https://${config.domainName}`,
+    },
+    statusCode,
+  };
+};
+
 // **Create (Put)**
 export const createItem = async (tableName: string, parsedBody: SafeParseReturnType<any, any> | null): Promise<APIGatewayProxyResult> => {
   if (!parsedBody || !parsedBody.success) {
-    return {
-      statusCode: 400,
-      body: `BodyErr: ${(parsedBody) ? parsedBody.error : 'body is not defined'}`,
-    };
+    return getResponse(400, `BodyErr: ${(parsedBody) ? parsedBody.error : 'body is not defined'}`);
   }
   const params = {
     TableName: tableName,
@@ -28,29 +35,17 @@ export const createItem = async (tableName: string, parsedBody: SafeParseReturnT
   try {
     const client = getDdbClient();
     await client.send(new PutItemCommand(params));
-    return {
-      statusCode: 200,
-      body: 'Successfully created item!',
-    };
+    return getResponse(200, 'Successfully created item!');
   } catch (err) {
     console.error(`Error adding item: ${err}`);
-    return {
-      statusCode: 500,
-      body: 'Error adding item - check logs',
-    };
+    return getResponse(500, 'Error adding item - check logs');
   }
 };
 
 // **Read (Get)**
 export const getItem = async (tableName: string, parsedQueryStringParams: SafeParseReturnType<any, any> | null): Promise<APIGatewayProxyResult> => {
   if (!parsedQueryStringParams || !parsedQueryStringParams.success) {
-    return {
-      statusCode: 400,
-      body: `QueryStringParametersErr: ${(parsedQueryStringParams) ? parsedQueryStringParams.error : 'queryStringParameters is not defined'}`,
-      headers: {
-        'Access-Control-Allow-Origin': `https://${config.domainName}`,
-      },
-    };
+    return getResponse(400, `QueryStringParametersErr: ${(parsedQueryStringParams) ? parsedQueryStringParams.error : 'queryStringParameters is not defined'}`);
   }
   const params = {
     TableName: tableName,
@@ -60,30 +55,12 @@ export const getItem = async (tableName: string, parsedQueryStringParams: SafePa
     const client = getDdbClient();
     const { Item } = await client.send(new GetItemCommand(params));
     if (Item) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify(unmarshall(Item)),
-        headers: {
-          'Access-Control-Allow-Origin': `https://${config.domainName}`,
-        },
-      };
+      return getResponse(200, JSON.stringify(unmarshall(Item)));
     }
-    return {
-      statusCode: 404,
-      body: 'Item not found',
-      headers: {
-        'Access-Control-Allow-Origin': `https://${config.domainName}`,
-      },
-    };
+    return getResponse(404, 'Item not found');
   } catch (err) {
     console.error(`Error retrieving item: ${err}`);
-    return {
-      statusCode: 500,
-      body: 'Error retrieving item - check logs',
-      headers: {
-        'Access-Control-Allow-Origin': `https://${config.domainName}`,
-      },
-    };
+    return getResponse(500, 'Error retrieving item - check logs');
   }
 };
 
@@ -92,10 +69,7 @@ export const updateItem = async (tableName: string, parsedQueryStringParams: Saf
   if (!parsedBody || !parsedBody.success || !parsedQueryStringParams || !parsedQueryStringParams.success) {
     const bodyErr = (!parsedBody) ? 'body is not defined' : (!parsedBody.success) ? parsedBody.error : '';
     const queryStringParametersErr = (!parsedQueryStringParams) ? 'queryStringParameters is not defined' : (!parsedQueryStringParams.success) ? parsedQueryStringParams.error : '';
-    return {
-      statusCode: 400,
-      body: `BodyErr: ${bodyErr}\nQueryStringParametersErr: ${queryStringParametersErr}`,
-    };
+    return getResponse(400, `BodyErr: ${bodyErr}\nQueryStringParametersErr: ${queryStringParametersErr}`);
   }
 
   const update = parsedBody.data;
@@ -122,32 +96,20 @@ export const updateItem = async (tableName: string, parsedQueryStringParams: Saf
     const client = getDdbClient();
     const { Attributes } = await client.send(new UpdateItemCommand(params));
     if (Attributes) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify(unmarshall(Attributes)),
-      };
+      return getResponse(200, JSON.stringify(unmarshall(Attributes)));
     } else {
-      return {
-        statusCode: 404,
-        body: 'Item not found',
-      };
+      return getResponse(404, 'Item not found');
     }
   } catch (err) {
     console.error(`Error updating item: ${err}`);
-    return {
-      statusCode: 500,
-      body: 'Error updating item - check logs',
-    };
+    return getResponse(500, 'Error updating item - check logs');
   }
 };
 
 // **Delete**
 export const deleteItem = async (tableName: string, parsedQueryStringParams: SafeParseReturnType<any, any> | null): Promise<APIGatewayProxyResult> => {
   if (!parsedQueryStringParams || !parsedQueryStringParams.success) {
-    return {
-      statusCode: 400,
-      body: `QueryStringParametersErr: ${(parsedQueryStringParams) ? parsedQueryStringParams.error : 'queryStringParameters is not defined'}`,
-    };
+    return getResponse(400, `QueryStringParametersErr: ${(parsedQueryStringParams) ? parsedQueryStringParams.error : 'queryStringParameters is not defined'}`);
   }
   const params = {
     TableName: tableName,
@@ -158,21 +120,12 @@ export const deleteItem = async (tableName: string, parsedQueryStringParams: Saf
     const client = getDdbClient();
     const { Attributes } = await client.send(new DeleteItemCommand(params));
     if (Attributes) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify(unmarshall(Attributes)),
-      };
+      return getResponse(200, JSON.stringify(unmarshall(Attributes)));
     }
-    return {
-      statusCode: 404,
-      body: 'Item not found',
-    };
+    return getResponse(404, 'Item not found');
   } catch (err) {
     console.error(`Error deleting item: ${err}`);
-    return {
-      statusCode: 500,
-      body: 'Error deleting item - check logs',
-    };
+    return getResponse(500, 'Error deleting item - check logs');
   }
 };
 
@@ -213,16 +166,10 @@ export const ddbCrudHandler = async (event: APIGatewayProxyEvent, itemSchema: Zo
       const parsedQueryStringParams = (queryStringParameters) ? itemSchema.safeParse(queryStringParameters) : null;
       return await deleteItem(DB_TABLE_NAME, parsedQueryStringParams);
     } else {
-      return {
-        statusCode: 405,
-        body: 'Method Not Allowed',
-      };
+      return getResponse(405, 'Method Not Allowed');
     }
   } catch (err) {
     console.error(err);
-    return {
-      statusCode: 500,
-      body: 'Internal Error - check logs',
-    };
+    return getResponse(500, 'Internal Error - check logs');
   }
 };
