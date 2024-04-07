@@ -1,7 +1,6 @@
 import { DeleteItemCommand, DynamoDBClient, GetItemCommand, PutItemCommand, ReturnValue, ScanCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { v4 } from 'uuid';
 import { SafeParseReturnType, ZodEffects, ZodTypeAny } from 'zod';
 import { ResourceLambdaEnvSchema } from '../../src/types';
 

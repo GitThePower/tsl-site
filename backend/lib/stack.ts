@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 import { Api } from './api';
+import config from './config';
 import { DynamoDBTable } from './dynamodb';
 import { LambdaFunction, LambdaRole } from './lambda';
 import Website from './website';
@@ -48,8 +49,8 @@ export class TslDotComStack extends cdk.Stack {
       };
     };
 
-    createRestfulResource('league');
+    createRestfulResource(config.resource_league);
 
-    createRestfulResource('user');
+    createRestfulResource(config.resource_user);
   }
 }
