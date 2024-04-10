@@ -36,7 +36,7 @@ export class TslDotComStack extends cdk.Stack {
       };
       const lambdaRole = new LambdaRole(this, `${id}-${resource}-role`);
       const lambda = new LambdaFunction(this, `${id}-${resource}-accessor`, {
-        entry: `src/${resource}/index.ts`,
+        entry: `src/resources/${resource}.ts`,
         environment: lambdaEnv,
         role: lambdaRole,
       });

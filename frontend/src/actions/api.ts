@@ -1,5 +1,5 @@
 import config from '../../../backend/lib/config';
-import { User, UserSchema } from '../../../backend/src/user';
+import { User, UserSchema } from '../../../backend/src/resources/user';
 
 const baseUrl = `https://${config.domainNameApi}`;
 
