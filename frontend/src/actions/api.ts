@@ -13,7 +13,6 @@ const getUser = async (username: string): Promise<User> => {
       }
     })
     .then(res => res.json());
-    console.log(res);
     user = UserSchema.parse(res);
   } catch (e) {
     console.error(e);
