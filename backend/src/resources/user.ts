@@ -1,9 +1,10 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
-import { ddbCrudHandler } from '../utils/ddb';
 import { z } from 'zod';
+import { ddbCrudHandler } from '../utils/ddb';
+import config from '../../lib/config';
 
 export const UserSchema = z.object({
-  username: z.string(),
+  [config.resource_user_pk]: z.string(),
   password: z.string(),
 })
   .partial()

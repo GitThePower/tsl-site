@@ -24,10 +24,10 @@ export class TslDotComStack extends cdk.Stack {
         domainHostedZone: website.hostedZone,
     });
 
-    const createRestfulResource = (resource: string): RestfulResourceProperties => {
+    const createRestfulResource = (resource: string, pk: string): RestfulResourceProperties => {
       const table = new DynamoDBTable(this, `${id}-${resource}-table`, {
         partitionKey: {
-          name: `${resource}name`,
+          name: pk,
           type: AttributeType.STRING,
         },
       });
@@ -49,8 +49,10 @@ export class TslDotComStack extends cdk.Stack {
       };
     };
 
-    createRestfulResource(config.resource_league);
+    createRestfulResource(config.resource_league, config.resource_league_pk);
 
-    createRestfulResource(config.resource_user);
+    createRestfulResource(config.resource_session, config.resource_session_pk);
+
+    createRestfulResource(config.resource_user, config.resource_user_pk);
   }
 }
