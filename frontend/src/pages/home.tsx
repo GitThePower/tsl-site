@@ -3,12 +3,14 @@ import {
   Tab,
   Tabs,
 } from '@mui/material';
-import { ChangeEvent, useState } from 'react';
+import { ChangeEvent, useContext, useState } from 'react';
+import conditions from '../actions/conditions.ts';
+import { AppContext } from '../App.tsx';
 import CardPool from '../components/CardPool';
 import StandingsTable from '../components/StandingsTable';
-import { config } from '../../../local-config/index.ts';
 
 const Home = () => {
+  const { session } = useContext(AppContext);
   const [tabValue, setTabValue] = useState(0);
 
   const handleTabChange = (event: ChangeEvent<unknown>, newValue: number) => {
@@ -26,7 +28,7 @@ const Home = () => {
       >
         <Tab label='Standings' />
         <Tab label='Pool' />
-        {localStorage.getItem(config.localStorageKey) && (
+        {conditions.sessionIsActive(session) && (
           <Tab label='Reporting' />
         )}
       </Tabs>

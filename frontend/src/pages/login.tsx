@@ -1,8 +1,22 @@
 import { Box, Button, Grid, TextField } from '@mui/material';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { v4 } from 'uuid';
 import api from '../actions/api.ts';
+import { Session, User } from '../../../backend/src/types.ts';
 import { config } from '../../../local-config/index.ts';
+
+const setSession = async (username: string) => {
+  const sessionId = v4();
+  const millisecondsIn30Days = 30 * 24 * 60 * 60 * 1000;  // Days * Hours * Minutes * Seconds * Milliseconds
+  const session: Session = {
+    sessionid: sessionId,
+    username,
+    expiration: `${Date.now() + millisecondsIn30Days}`,
+  }
+  await api.createSession(session);
+  localStorage.setItem(config.localStorageKey, sessionId);
+}
 
 const Login = () => {
   const navigate = useNavigate();
@@ -13,11 +27,10 @@ const Login = () => {
 
   const handleLogin = async () => {
     setIsLoading(true);
-
     try {
-      const response = await api.getUser(username);
+      const response: User = await api.getUser(username);
       if (response?.password === password) {
-        localStorage.setItem(config.localStorageKey, 'true');
+        await setSession(username);
         navigate('/');
       } else {
         setLoginFailed(true);

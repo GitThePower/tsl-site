@@ -3,13 +3,16 @@ import {
   Toolbar,
   Typography,
 } from '@mui/material';
+import { useContext } from 'react';
 import { useLocation } from 'react-router-dom';
 import LoginButton from './LoginButton';
 import Logo from './Logo';
 import ProfileButton from './ProfileButton';
-import { config } from '../../../local-config/index.ts';
+import conditions from '../actions/conditions.ts';
+import { AppContext } from '../App.tsx';
 
 const Header = () => {
+  const { session } = useContext(AppContext);
   const location = useLocation();
 
   return (
@@ -20,7 +23,7 @@ const Header = () => {
         {
           (location.pathname === '/login' || location.pathname === '/profile') ?
             <div /> :
-            (localStorage.getItem(config.localStorageKey)) ?
+            (conditions.sessionIsActive(session)) ?
               <ProfileButton /> :
               <LoginButton />
         }
