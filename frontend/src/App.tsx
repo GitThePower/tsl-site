@@ -10,6 +10,7 @@ import { config } from '../../local-config';
 
 export const AppContext = createContext({
   session: {} as Session,
+  setSession: {} as React.Dispatch<React.SetStateAction<Session>>,
 });
 
 const App = () => {
@@ -26,7 +27,7 @@ const App = () => {
   }, [sessionKey]);
 
   return (
-    <AppContext.Provider value={{ session }}>
+    <AppContext.Provider value={{ session, setSession }}>
       <BrowserRouter>
         <header>
           <Header />

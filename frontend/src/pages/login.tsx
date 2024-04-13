@@ -1,24 +1,24 @@
 import { Box, Button, Grid, TextField } from '@mui/material';
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 } from 'uuid';
 import api from '../actions/api.ts';
-import { Session, User } from '../../../backend/src/types.ts';
+import { User } from '../../../backend/src/types.ts';
 import { config } from '../../../local-config/index.ts';
+import { AppContext } from '../App.tsx';
 
-const setSession = async (username: string) => {
+const getSessionValues = (username: string) => {
   const sessionId = v4();
   const millisecondsIn30Days = 30 * 24 * 60 * 60 * 1000;  // Days * Hours * Minutes * Seconds * Milliseconds
-  const session: Session = {
+  return {
     sessionid: sessionId,
     username,
     expiration: `${Date.now() + millisecondsIn30Days}`,
-  }
-  await api.createSession(session);
-  localStorage.setItem(config.localStorageKey, sessionId);
-}
+  };
+};
 
 const Login = () => {
+  const { setSession } = useContext(AppContext);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [loginFailed, setLoginFailed] = useState(false);
@@ -30,7 +30,10 @@ const Login = () => {
     try {
       const response: User = await api.getUser(username);
       if (response?.password === password) {
-        await setSession(username);
+        const session = getSessionValues(username);
+        await api.createSession(session);
+        localStorage.setItem(config.localStorageKey, session.sessionid);
+        setSession(session);
         navigate('/');
       } else {
         setLoginFailed(true);
@@ -70,6 +73,7 @@ const Login = () => {
               type='submit'
               fullWidth
               onClick={handleLogin}
+              disabled={isLoading}
             >
               {isLoading ? 'Logging in...' : 'Login'}
             </Button>

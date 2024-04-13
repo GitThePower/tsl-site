@@ -1,9 +1,11 @@
 import { Box, Button, Grid } from '@mui/material';
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AppContext } from '../App.tsx';
 import { config } from '../../../local-config/index.ts';
 
 const Profile = () => {
+  const { setSession } = useContext(AppContext);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -13,6 +15,7 @@ const Profile = () => {
     try {
       // const response = await authenticateUser(username, password); // Your async function
       localStorage.removeItem(config.localStorageKey);
+      setSession({});
       if (!localStorage.getItem(config.localStorageKey)) { // response success
         // Successful login
         navigate('/');
