@@ -23,6 +23,22 @@ const getUser = async (username: string): Promise<User> => {
   return user;
 };
 
+const updateUser = async (username: string, update: User): Promise<User> => {
+  let user = {} as User;
+  try {
+    const res = await fetch(`${baseUrl}/${config.resource_user}?username=${username}`, {
+      method: 'PUT',
+      body: JSON.stringify(update),
+    })
+    .then(res => res.json());
+    user = UserSchema.parse(res);
+  } catch (e) {
+    console.error(e);
+  }
+
+  return user;
+};
+
 const createSession = async (session: Session): Promise<void> => {
   try {
     await fetch(`${baseUrl}/${config.resource_session}`, {
@@ -59,4 +75,5 @@ export default {
   createSession,
   getSession,
   getUser,
+  updateUser,
 };
