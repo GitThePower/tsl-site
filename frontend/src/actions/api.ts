@@ -1,7 +1,9 @@
 import config from '../../../backend/lib/config';
 import { Session, SessionSchema, User, UserSchema } from '../../../backend/src/types';
 
-const baseUrl = `https://${config.domainNameApi}`;
+const baseUrl = (process.env.NODE_ENV && process.env.NODE_ENV === 'dev') ?
+ '/proxy' :
+ `https://${config.domainNameApi}`;
 
 const getUser = async (username: string): Promise<User> => {
   let user = {} as User;
