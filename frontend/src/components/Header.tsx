@@ -5,11 +5,12 @@ import {
 } from '@mui/material';
 import { useContext } from 'react';
 import { useLocation } from 'react-router-dom';
-import LoginButton from './LoginButton';
+import LoginPageButton from './LoginPageButton.tsx';
 import Logo from './Logo';
 import ProfileButton from './ProfileButton';
 import conditions from '../actions/conditions.ts';
 import { AppContext } from '../App.tsx';
+import LogoutButton from './LogoutButton.tsx';
 
 const Header = () => {
   const { session } = useContext(AppContext);
@@ -21,11 +22,13 @@ const Header = () => {
         <Logo />
         <Typography variant='h6'>TSL Site</Typography>
         {
-          (location.pathname === '/login' || location.pathname === '/profile') ?
+          (location.pathname === '/login') ?
             <div /> :
-            (conditions.sessionIsActive(session)) ?
-              <ProfileButton /> :
-              <LoginButton />
+            (location.pathname === '/profile') ?
+              <LogoutButton /> :
+              (conditions.sessionIsActive(session)) ?
+                <ProfileButton /> :
+                <LoginPageButton />
         }
       </Toolbar>
     </AppBar>
