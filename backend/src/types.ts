@@ -59,6 +59,10 @@ export type Session = z.infer<typeof SessionSchema>;
 export const UserSchema = z.object({
   username: z.string(),
   password: z.string(),
+  leagues: z.array(z.object({
+    leaguename: z.string(),
+    deckList: z.string(),
+  })),
 })
   .partial()
   .refine(
