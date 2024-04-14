@@ -8,7 +8,7 @@
     "build": "tsc",
     "cdk": "cdk",
     "cleanup": "@powershell -NoProfile -ExecutionPolicy Unrestricted -Command ./cleanUp.ps1",
-    "deploy": "tsc && jest -- stack.test.ts && cdk synth && cdk deploy --require-approval never",
+    "deploy": "tsc && jest -- stack.test.ts && cdk synth && cdk deploy --require-approval never && npm run cleanup",
     "test": "jest"
   },
   "repository": {

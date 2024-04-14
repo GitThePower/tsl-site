@@ -130,21 +130,21 @@ export const deleteItem = async (tableName: string, parsedQueryStringParams: Saf
 };
 
 // **Scan (List)**
-export const listItems = async (tableName: string): Promise<Record<string, any>[]> => {
+export const listItems = async (tableName: string): Promise<APIGatewayProxyResult> => {
   const params = {
     TableName: tableName,
   };
-  let results: Record<string, any>[] = [];
   try {
     const client = getDdbClient();
     const { Items } = await client.send(new ScanCommand(params));
     if (Items) {
-      results = Items.map((item) => unmarshall(item));
+      return getResponse(200, JSON.stringify(Items.map((item) => unmarshall(item))));
     }
+    return getResponse(404, 'Items not found');
   } catch (err) {
     console.error('Error listing items:', err);
+    return getResponse(500, 'Error retrieving items - check logs');
   }
-  return results;
 };
 
 export const ddbCrudHandler = async (event: APIGatewayProxyEvent, itemSchema: ZodEffects<ZodTypeAny>): Promise<APIGatewayProxyResult> => {
@@ -153,8 +153,11 @@ export const ddbCrudHandler = async (event: APIGatewayProxyEvent, itemSchema: Zo
     const { body, httpMethod, queryStringParameters } = event;
 
     if (httpMethod === 'GET') {
-      const parsedQueryStringParams = (queryStringParameters) ? itemSchema.safeParse(queryStringParameters) : null;
-      return await getItem(DB_TABLE_NAME, parsedQueryStringParams);
+      if (queryStringParameters) {
+        const parsedQueryStringParams = itemSchema.safeParse(queryStringParameters);
+        return await getItem(DB_TABLE_NAME, parsedQueryStringParams);
+      }
+      return await listItems(DB_TABLE_NAME);
     } else if (httpMethod === 'POST') {
       const parsedBody = (body) ? itemSchema.safeParse(JSON.parse(body)) : null;
       return await createItem(DB_TABLE_NAME, parsedBody);
