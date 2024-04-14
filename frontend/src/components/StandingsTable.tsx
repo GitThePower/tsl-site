@@ -3,27 +3,45 @@ import {
   Paper,
   Table,
   TableBody,
-  TableCell,
   TableContainer,
   TableHead,
-  TableRow,
 } from '@mui/material';
+import { useEffect, useState } from 'react';
+import StandingsTableRow from './StandingsTableRow';
+import api from '../actions/api';
+import { User } from '../../../backend/src/types';
 
 const StandingsTable = () => {
+  const [users, setUsers] = useState([] as User[]);
+
+  useEffect(() => {
+    const fillTable = async () => {
+      const userResults = await api.listUsers();
+      setUsers(userResults);
+    };
+    fillTable();
+  });
+
   return (
     <Box sx={{ width: '100%', overflowY: 'auto' }}>
       <TableContainer component={Paper}>
         <Table sx={{ minWidth: 650 }} aria-label='simple table'>
           <TableHead>
-            <TableRow>
-              <TableCell sx={{ textAlign: 'center' }}>Rank</TableCell>
-              <TableCell sx={{ textAlign: 'center' }}>Name</TableCell>
-              <TableCell sx={{ textAlign: 'center' }}>Weekly Win %</TableCell>
-              <TableCell sx={{ textAlign: 'center' }}>Overall Win %</TableCell>
-            </TableRow>
+            <StandingsTableRow
+              rank={'Rank'}
+              name={'Name'}
+              weeklyWPrcnt={'Weekly Win %'}
+              overallWPrcnt={'Overall Win %'}
+            />
           </TableHead>
           <TableBody>
-            {/* Add your table rows and data here */}
+            {users.map((user, idx) =>
+              <StandingsTableRow
+                rank={`${idx + 1}`}
+                name={user.username || ''}
+                weeklyWPrcnt={`${0}`}
+                overallWPrcnt={`${0}`}
+              />)}
           </TableBody>
         </Table>
       </TableContainer>

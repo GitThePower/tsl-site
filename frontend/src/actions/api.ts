@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import config from '../../../backend/lib/config';
 import { Session, SessionSchema, User, UserSchema } from '../../../backend/src/types';
 
@@ -10,9 +11,6 @@ const getUser = async (username: string): Promise<User> => {
   try {
     const res = await fetch(`${baseUrl}/${config.resource_user}?username=${username}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'x-www-form-urlencoded',
-      }
     })
     .then(res => res.json());
     user = UserSchema.parse(res);
@@ -21,6 +19,21 @@ const getUser = async (username: string): Promise<User> => {
   }
 
   return user;
+};
+
+const listUsers = async (): Promise<User[]> => {
+  let users = [] as User[];
+  try {
+    const res = await fetch(`${baseUrl}/${config.resource_user}`, {
+      method: 'GET'
+    })
+    .then(res => res.json());
+    users = z.array(UserSchema).parse(res);
+  } catch (e) {
+    console.error(e);
+  }
+
+  return users;
 };
 
 const updateUser = async (username: string, update: User): Promise<User> => {
@@ -43,9 +56,6 @@ const createSession = async (session: Session): Promise<void> => {
   try {
     await fetch(`${baseUrl}/${config.resource_session}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(session),
     });
   } catch (e) {
@@ -58,9 +68,6 @@ const getSession = async (sessionid: string): Promise<Session> => {
   try {
     const res = await fetch(`${baseUrl}/${config.resource_session}?sessionid=${sessionid}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'x-www-form-urlencoded',
-      }
     })
     .then(res => res.json());
     session = SessionSchema.parse(res);
@@ -75,5 +82,6 @@ export default {
   createSession,
   getSession,
   getUser,
+  listUsers,
   updateUser,
 };
