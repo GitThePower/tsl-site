@@ -1,9 +1,10 @@
 import { createContext, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import api from './actions/api';
-import Header from './components/Header';
+import conditions from './actions/conditions';
 import Home from './pages/home';
 import Login from './pages/login';
+import NotFound from './pages/not-found';
 import Profile from './pages/profile';
 import { Session } from '../../backend/src/types';
 import { config } from '../../local-config';
@@ -29,16 +30,15 @@ const App = () => {
   return (
     <AppContext.Provider value={{ session, setSession }}>
       <BrowserRouter>
-        <header>
-          <Header />
-        </header>
-        <main>
-          <Routes>
-            <Route path='/' element={<Home />} />
-            <Route path='/login' element={<Login />} />
-            <Route path='/profile' element={<Profile />} />
-          </Routes>
-        </main>
+        <Routes>
+          <Route path='/' element={<Home />} />
+          <Route path='/login' element={<Login />} />
+          <Route path='/profile' element={(conditions.sessionIsActive(session)) ?
+            <Profile /> :
+            <NotFound />
+          } />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </BrowserRouter>
     </AppContext.Provider>
   );
