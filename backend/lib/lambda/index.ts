@@ -3,11 +3,10 @@ import { IRole, ManagedPolicy, Role, ServicePrincipal } from 'aws-cdk-lib/aws-ia
 import { Architecture, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Construct } from 'constructs';
-import { ResourceLambdaEnv } from '../../src/types';
 
 interface LambdaFunctionProps {
   entry: string;
-  environment: ResourceLambdaEnv;
+  environment: { [key:string]: string};
   role: IRole;
 }
 

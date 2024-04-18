@@ -6,7 +6,11 @@ export type MagicCardPool = z.infer<typeof MagicCardPoolSchema>;
 const MoxfieldCardSchema = z.object({
   quantity: z.number(),
   card: z.object({
+    cmc: z.number(),
+    colors: z.array(z.string()),
+    mana_cost: z.string(),
     name: z.string(),
+    set_name: z.string(),
   }),
 });
 const MoxfieldBoardSchema = z.object({
@@ -21,6 +25,7 @@ export const MoxfieldContentSchema = z.object({
     maybeboard: MoxfieldBoardSchema,
   }),
 });
+export type MoxfieldContent = z.infer<typeof MoxfieldContentSchema>;
 
 export const ResourceLambdaEnvSchema = z.object({
   DB_TABLE_NAME: z.string(),
@@ -33,7 +38,8 @@ export type ResourceLambdaEnv = z.infer<typeof ResourceLambdaEnvSchema>;
 
 export const LeagueSchema = z.object({
   leaguename: z.string(),
-  pool: MagicCardPoolSchema,
+  pool: z.record(z.string(), MoxfieldContentSchema),
+  isActive: z.boolean(),
 })
   .partial()
   .refine(

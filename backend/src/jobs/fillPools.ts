@@ -1,20 +1,20 @@
-import axios, { AxiosResponse } from 'axios';
-import { MagicCardPool, MoxfieldBoard, MoxfieldContentSchema } from '../../src/types';
+import axios from 'axios';
+import { MagicCardPool, MoxfieldBoard, MoxfieldContent, MoxfieldContentSchema } from '../../src/types';
 
-const getMoxfieldBoards = async (id: string): Promise<MoxfieldBoard[]>  => {
-  let result: AxiosResponse<any, any>;
+const getMoxfieldContent = async (url: string): Promise<MoxfieldContent>  => {
+  let content: MoxfieldContent;
   try {
-    result = await axios.get(`https://api2.moxfield.com/v3/decks/all/${id}`);
+    const id = url.split('/')[4];
+    const result = await axios.get(`https://api2.moxfield.com/v3/decks/all/${id}`);
     if (result.status !== 200) {
       throw new Error('Request to Get decklist from Moxfield failed');
     }
+    content = MoxfieldContentSchema.parse(result.data);
   } catch (e) {
     throw new Error(JSON.stringify(e));
   }
   
-  const content = MoxfieldContentSchema.parse(result.data);
-  const { boards: { mainboard, sideboard, maybeboard } } = content;
-  return [mainboard, sideboard, maybeboard];
+  return content;
 };
 
 const fillPool = async (boards: MoxfieldBoard[]): Promise<MagicCardPool> => {
@@ -33,5 +33,17 @@ const fillPool = async (boards: MoxfieldBoard[]): Promise<MagicCardPool> => {
 };
 
 export const handler = async (): Promise<void> => {
-    const pool: MagicCardPool = {};
+  // scan league table
+  // extract league name from active league
+  // scan users table
+  // extract all users in the active league
+  // instantiate a record
+  // for users in active league
+  //   key = username
+  //   get Moxfield Content for the users decklist
+  const decklistUrl = 'https://www.moxfield.com/decks/QUoKeyN9CUiANOv24t2WtQ';
+  const result = await getMoxfieldContent(decklistUrl);
+  console.log(JSON.stringify(result));
+  //   set record[key] to Moxfield Content
+  // update active league in league table with record for pool
 };

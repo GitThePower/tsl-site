@@ -14,8 +14,8 @@ test('Stack should have the following resource counts', () => {
   template.resourceCountIs('AWS::ApiGateway::Resource', 3);
   template.resourceCountIs('AWS::ApiGateway::RestApi', 1);
   template.resourceCountIs('AWS::DynamoDB::Table', 3);
-  template.resourceCountIs('AWS::IAM::Policy', 4);
-  template.resourceCountIs('AWS::IAM::Role', 4);
-  template.resourceCountIs('AWS::Lambda::Function', 4);
+  template.resourceCountIs('AWS::IAM::Policy', 5);
+  template.resourceCountIs('AWS::IAM::Role', 5);
+  template.resourceCountIs('AWS::Lambda::Function', 5);
   template.resourceCountIs('AWS::S3::Bucket', 1);
 });

@@ -4,6 +4,7 @@ import { Construct } from 'constructs';
 import { Api } from './api';
 import config from './config';
 import { DynamoDBTable } from './dynamodb';
+import { CronJob } from './events';
 import { LambdaFunction, LambdaRole } from './lambda';
 import Website from './website';
 import { ResourceLambdaEnv } from '../src/types';
@@ -49,10 +50,27 @@ export class TslDotComStack extends cdk.Stack {
       };
     };
 
-    createRestfulResource(config.resource_league, config.resource_league_pk);
+    const leagueResource = createRestfulResource(config.resource_league, config.resource_league_pk);
 
     createRestfulResource(config.resource_session, config.resource_session_pk);
 
-    createRestfulResource(config.resource_user, config.resource_user_pk);
+    const userResource = createRestfulResource(config.resource_user, config.resource_user_pk);
+
+    const updatePoolsLambdaRole = new LambdaRole(this, `${id}-${config.job_updatePools}-role`);
+    const updatePoolsLambda = new LambdaFunction(this, `${id}-${config.job_updatePools}-executor`, {
+      entry: `src/jobs/${config.job_updatePools}.ts`,
+      environment: {},
+      role: updatePoolsLambdaRole,
+    });
+    leagueResource.table.grantReadWriteData(updatePoolsLambdaRole);
+    userResource.table.grantReadData(updatePoolsLambdaRole);
+
+    new CronJob(this, `${id}-${config.job_updatePools}-schedule`, {
+      cronOps: {
+        hour: '0',
+        minute: '0',
+      },
+      lambda: updatePoolsLambda,
+    });
   }
 }
