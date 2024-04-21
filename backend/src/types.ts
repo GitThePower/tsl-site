@@ -32,13 +32,19 @@ export const ResourceLambdaEnvSchema = z.object({
 });
 export type ResourceLambdaEnv = z.infer<typeof ResourceLambdaEnvSchema>;
 
+export const UpdatePoolsLambdaEnvSchema = z.object({
+  LEAGUE_TABLE_NAME: z.string(),
+  USER_TABLE_NAME: z.string(),
+});
+export type UpdatePoolsLambdaEnv = z.infer<typeof UpdatePoolsLambdaEnvSchema>;
+
 // ######################################
 // ########## RESOURCE SCHEMAS ##########
 // ######################################
 
 export const LeagueSchema = z.object({
   leaguename: z.string(),
-  pool: z.record(z.string(), MoxfieldContentSchema),
+  cardPool: z.record(z.string(), MoxfieldContentSchema),
   isActive: z.boolean(),
 })
   .partial()
@@ -65,7 +71,10 @@ export type Session = z.infer<typeof SessionSchema>;
 export const UserSchema = z.object({
   username: z.string(),
   password: z.string(),
-  decklist: z.string(),
+  leagues: z.array(z.object({
+    leaguename: z.string(),
+    decklistUrl: z.string(),
+  })),
 })
   .partial()
   .refine(

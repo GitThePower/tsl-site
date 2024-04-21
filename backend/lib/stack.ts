@@ -1,4 +1,4 @@
-import * as cdk from 'aws-cdk-lib';
+import { Duration, Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 import { Api } from './api';
@@ -7,15 +7,15 @@ import { DynamoDBTable } from './dynamodb';
 import { CronJob } from './events';
 import { LambdaFunction, LambdaRole } from './lambda';
 import Website from './website';
-import { ResourceLambdaEnv } from '../src/types';
+import { ResourceLambdaEnv, UpdatePoolsLambdaEnv } from '../src/types';
 
 interface RestfulResourceProperties {
   lambda: LambdaFunction;
   table: DynamoDBTable;
 }
 
-export class TslDotComStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+export class TslDotComStack extends Stack {
+  constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
     const website = new Website(this, `${id}-site`);
@@ -56,11 +56,16 @@ export class TslDotComStack extends cdk.Stack {
 
     const userResource = createRestfulResource(config.resource_user, config.resource_user_pk);
 
+    const updatePoolsLambdaEnv: UpdatePoolsLambdaEnv = {
+      LEAGUE_TABLE_NAME: leagueResource.table.tableName,
+      USER_TABLE_NAME: userResource.table.tableName,
+    };
     const updatePoolsLambdaRole = new LambdaRole(this, `${id}-${config.job_updatePools}-role`);
     const updatePoolsLambda = new LambdaFunction(this, `${id}-${config.job_updatePools}-executor`, {
       entry: `src/jobs/${config.job_updatePools}.ts`,
-      environment: {},
+      environment: updatePoolsLambdaEnv,
       role: updatePoolsLambdaRole,
+      timeout: Duration.minutes(1),
     });
     leagueResource.table.grantReadWriteData(updatePoolsLambdaRole);
     userResource.table.grantReadData(updatePoolsLambdaRole);

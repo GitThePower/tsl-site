@@ -8,6 +8,7 @@ interface LambdaFunctionProps {
   entry: string;
   environment: { [key:string]: string};
   role: IRole;
+  timeout?: Duration;
 }
 
 export class LambdaRole extends Role {
@@ -37,7 +38,7 @@ export class LambdaFunction extends NodejsFunction {
       retryAttempts: 0,
       role: props.role,
       runtime: Runtime.NODEJS_20_X,
-      timeout: Duration.seconds(10),
+      timeout: props.timeout || Duration.seconds(10),
     });
   }
 }
