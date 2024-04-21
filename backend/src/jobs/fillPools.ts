@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { z } from 'zod';
 import { listItems, updateItem } from '../utils/ddb';
-import { LeagueSchema, MagicCardPool, MoxfieldBoard, MoxfieldContent, MoxfieldContentSchema, UpdatePoolsLambdaEnvSchema, UserSchema } from '../../src/types';
+import { LeagueSchema, MagicCardPool, MoxfieldBoard, MoxfieldContent, MoxfieldContentSchema, FillPoolsLambdaEnvSchema, UserSchema } from '../../src/types';
 
 const getMoxfieldContent = async (url: string): Promise<MoxfieldContent> => {
   let content: MoxfieldContent;
@@ -43,7 +43,7 @@ const extractTableContents = async (tableName: string): Promise<object> => {
 
 export const handler = async (): Promise<void> => {
   const jobStartTime = Date.now();
-  const { LEAGUE_TABLE_NAME, USER_TABLE_NAME } = UpdatePoolsLambdaEnvSchema.parse(process.env);
+  const { LEAGUE_TABLE_NAME, USER_TABLE_NAME } = FillPoolsLambdaEnvSchema.parse(process.env);
 
   const leagueTableScanStartTime = Date.now();
   const allLeagues = await extractTableContents(LEAGUE_TABLE_NAME);

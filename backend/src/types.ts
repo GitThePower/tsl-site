@@ -32,11 +32,11 @@ export const ResourceLambdaEnvSchema = z.object({
 });
 export type ResourceLambdaEnv = z.infer<typeof ResourceLambdaEnvSchema>;
 
-export const UpdatePoolsLambdaEnvSchema = z.object({
+export const FillPoolsLambdaEnvSchema = z.object({
   LEAGUE_TABLE_NAME: z.string(),
   USER_TABLE_NAME: z.string(),
 });
-export type UpdatePoolsLambdaEnv = z.infer<typeof UpdatePoolsLambdaEnvSchema>;
+export type FillPoolsLambdaEnv = z.infer<typeof FillPoolsLambdaEnvSchema>;
 
 // ######################################
 // ########## RESOURCE SCHEMAS ##########

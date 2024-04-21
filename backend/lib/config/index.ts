@@ -4,7 +4,7 @@ export default {
   domainName,
   domainNameApi: `api.${domainName}`,
   domainNameWww: `www.${domainName}`,
-  job_updatePools: 'fillPools',
+  job_fillPools: 'fillPools',
   resource_league: 'league',
   resource_league_pk: 'leaguename',
   resource_session: 'session',

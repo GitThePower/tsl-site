@@ -7,7 +7,7 @@ import { DynamoDBTable } from './dynamodb';
 import { CronJob } from './events';
 import { LambdaFunction, LambdaRole } from './lambda';
 import Website from './website';
-import { ResourceLambdaEnv, UpdatePoolsLambdaEnv } from '../src/types';
+import { ResourceLambdaEnv, FillPoolsLambdaEnv } from '../src/types';
 
 interface RestfulResourceProperties {
   lambda: LambdaFunction;
@@ -56,26 +56,26 @@ export class TslDotComStack extends Stack {
 
     const userResource = createRestfulResource(config.resource_user, config.resource_user_pk);
 
-    const updatePoolsLambdaEnv: UpdatePoolsLambdaEnv = {
+    const fillPoolsLambdaEnv: FillPoolsLambdaEnv = {
       LEAGUE_TABLE_NAME: leagueResource.table.tableName,
       USER_TABLE_NAME: userResource.table.tableName,
     };
-    const updatePoolsLambdaRole = new LambdaRole(this, `${id}-${config.job_updatePools}-role`);
-    const updatePoolsLambda = new LambdaFunction(this, `${id}-${config.job_updatePools}-executor`, {
-      entry: `src/jobs/${config.job_updatePools}.ts`,
-      environment: updatePoolsLambdaEnv,
-      role: updatePoolsLambdaRole,
+    const fillPoolsLambdaRole = new LambdaRole(this, `${id}-${config.job_fillPools}-role`);
+    const fillPoolsLambda = new LambdaFunction(this, `${id}-${config.job_fillPools}-executor`, {
+      entry: `src/jobs/${config.job_fillPools}.ts`,
+      environment: fillPoolsLambdaEnv,
+      role: fillPoolsLambdaRole,
       timeout: Duration.minutes(1),
     });
-    leagueResource.table.grantReadWriteData(updatePoolsLambdaRole);
-    userResource.table.grantReadData(updatePoolsLambdaRole);
+    leagueResource.table.grantReadWriteData(fillPoolsLambdaRole);
+    userResource.table.grantReadData(fillPoolsLambdaRole);
 
-    new CronJob(this, `${id}-${config.job_updatePools}-schedule`, {
+    new CronJob(this, `${id}-${config.job_fillPools}-schedule`, {
       cronOps: {
         hour: '0',
         minute: '0',
       },
-      lambda: updatePoolsLambda,
+      lambda: fillPoolsLambda,
     });
   }
 }
