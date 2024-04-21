@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import config from '../../../backend/lib/config';
-import { Session, SessionSchema, User, UserSchema } from '../../../backend/src/types';
+import { League, LeagueSchema, Session, SessionSchema, User, UserSchema } from '../../../backend/src/types';
 
 const baseUrl = (process.env.NODE_ENV && process.env.NODE_ENV === 'dev') ?
  '/proxy' :
@@ -78,10 +78,28 @@ const getSession = async (sessionid: string): Promise<Session> => {
   return session;
 };
 
+
+
+const listLeagues = async (): Promise<League[]> => {
+  let leagues = [] as League[];
+  try {
+    const res = await fetch(`${baseUrl}/${config.resource_league}`, {
+      method: 'GET'
+    })
+    .then(res => res.json());
+    leagues = z.array(LeagueSchema).parse(res);
+  } catch (e) {
+    console.error(e);
+  }
+
+  return leagues;
+};
+
 export default {
   createSession,
   getSession,
   getUser,
+  listLeagues,
   listUsers,
   updateUser,
 };

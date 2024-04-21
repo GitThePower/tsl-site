@@ -4,7 +4,7 @@ import api from '../actions/api.ts';
 import { AppContext } from '../App.tsx';
 
 const UpdateDecklist = () => {
-  const { session } = useContext(AppContext);
+  const { league, session } = useContext(AppContext);
   const [isLoading, setIsLoading] = useState(false);
   const [updateDecklistMsg, setUpdateDecklistMsg] = useState('');
   const [decklist, setDecklist] = useState('');
@@ -14,15 +14,39 @@ const UpdateDecklist = () => {
     setIsLoading(true);
     try {
       const username = session.username ?? '';
-      const update = {
-        decklist,
-      };
-      const response = await api.updateUser(username, update);
-      if (response?.decklist === decklist) {
-        setUpdateDecklistMsg('Successfully updated decklist!');
-      } else {
-        setUpdateDecklistMsg('Failed to update decklist.');
+      const user = await api.getUser(username);
+      if (!user.leagues) { // User does not have any league memberships
+        const update = {
+          leagues: [
+            {
+              leaguename: league.leaguename || '',
+              decklistUrl: decklist,
+            }
+          ],
+        };
+        await api.updateUser(username, update);
+      } else if (user.leagues.filter((userLeague) => userLeague.leaguename === league.leaguename).length < 1) { // User is not a member of the active league
+        const currLeagues = user.leagues;
+        currLeagues.push({
+          leaguename: league.leaguename || '',
+          decklistUrl: decklist,
+        });
+        const update = {
+          leagues: currLeagues,
+        };
+        await api.updateUser(username, update);
+      } else { // User is a member of the active league
+        const currLeagues = user.leagues.filter((userLeague) => userLeague.leaguename !== league.leaguename);
+        currLeagues.push({
+          leaguename: league.leaguename || '',
+          decklistUrl: decklist,
+        });
+        const update = {
+          leagues: currLeagues,
+        };
+        await api.updateUser(username, update);
       }
+      setUpdateDecklistMsg('Successfully updated decklist!');
     } catch (e) {
       setUpdateDecklistMsg('Failed to update decklist.');
       console.error(e);
