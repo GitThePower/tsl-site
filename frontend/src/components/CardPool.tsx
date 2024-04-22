@@ -1,42 +1,71 @@
 import {
   Box,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  ListSubheader,
   TextField,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
-import { MagicCardPool } from '../../../backend/src/types';
+import { useContext, useState } from 'react';
+import { AppContext } from '../App';
+import { League, MagicCardPool } from '../../../backend/src/types';
+
+const getInitialSearchResults = (league: League): Record<string, MagicCardPool> => {
+  const searchResults: Record<string, MagicCardPool> = {};
+  if (league.cardPool) {
+    Object.keys(league.cardPool).forEach((username) => {
+      const userPool: MagicCardPool = {};
+      if (league.cardPool) {
+        Object.values(league.cardPool[username].boards).forEach((board) => {
+          Object.values(board.cards).forEach((card) => {
+            const cardName = card.card.name;
+            if (cardName in userPool) {
+              userPool[cardName].quantity += card.quantity;
+            } else {
+              userPool[cardName] = {
+                quantity: card.quantity,
+                mana_cost: card.card.mana_cost,
+              }
+            }
+          });
+        });
+      }
+      searchResults[username] = Object.keys(userPool).sort().reduce(
+        (sorted, key) => {
+          sorted[key] = userPool[key];
+          return sorted;
+        },
+        {} as MagicCardPool,
+      );
+    });
+  }
+  return Object.keys(searchResults).sort().reduce(
+    (sorted, key) => {
+      sorted[key] = searchResults[key];
+      return sorted;
+    },
+    {} as Record<string, MagicCardPool>,
+  );
+};
 
 const CardPool = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchResults, setSearchResults] = useState({} as MagicCardPool);
+  const { league } = useContext(AppContext);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    const fetchDataFromAPI = async () => {
-      setIsLoading(true);
-      try {
-        const data = await Promise.resolve({ 'Inside Source': 5 });
-        setSearchResults(data);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDataFromAPI();
-  }, []); // Empty dependency array: Execute only once on page load
-
-
+  const searchResults = getInitialSearchResults(league);
   let filteredResults = searchResults;
-
   if (searchTerm) {
-    filteredResults = Object.keys(searchResults).reduce((prev: MagicCardPool, key: string) => {
-      // Implement your filtering logic based on item properties and searchTerm
-      if (key.toLowerCase().includes(searchTerm.toLowerCase())) {
-        prev[key] = searchResults[key];
-      }
+    filteredResults = Object.keys(searchResults).reduce((prev: Record<string, MagicCardPool>, username: string) => {
+      const filteredUserPool: MagicCardPool = {};
+      Object.keys(searchResults[username]).forEach((cardName) => {
+        if (cardName.toLowerCase().includes(searchTerm.toLowerCase())) {
+          filteredUserPool[cardName] = searchResults[username][cardName];
+        }
+      });
+      prev[username] = filteredUserPool;
       return prev;
-    }, {} as MagicCardPool);
+    }, {} as Record<string, MagicCardPool>);
   }
 
   return (
@@ -48,17 +77,27 @@ const CardPool = () => {
         fullWidth
         margin='normal'
       />
-      {isLoading ? (
-        <div>Loading...</div>
-      ) : (
-        <ul>
-          {Object.keys(filteredResults).map((cardName: string) => (
-            <li key={cardName}>
-              {cardName}
-            </li>
+      {Object.keys(filteredResults).map((username: string) => (
+        <List
+          sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}
+          component="nav"
+          aria-labelledby="nested-list-subheader"
+          subheader={
+            <ListSubheader component="div" id="nested-list-subheader">
+              {username}
+            </ListSubheader>
+          }
+        >
+          {Object.keys(filteredResults[username]).map((cardName: string) => (
+            <ListItemButton>
+              <ListItemIcon>
+                {filteredResults[username][cardName].mana_cost}
+              </ListItemIcon>
+              <ListItemText primary={`${cardName} x${filteredResults[username][cardName].quantity}`} />
+            </ListItemButton>
           ))}
-        </ul>
-      )}
+        </List>
+      ))}
     </Box>
   )
 };

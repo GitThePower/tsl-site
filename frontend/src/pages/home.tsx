@@ -27,7 +27,7 @@ const Home = () => {
         <Header HeaderButton={(conditions.sessionIsActive(session)) ?
           ProfileButton :
           LoginPageButton
-        }/>
+        } />
       </header>
       <main>
         <Box sx={{ width: '100%', overflowY: 'auto' }}> {/* Make content scrollable */}
@@ -37,17 +37,19 @@ const Home = () => {
             variant='scrollable'
             scrollButtons='auto'
           >
-            <Tab label='Standings' />
             <Tab label='Pool' />
+            {conditions.sessionIsActive(session) && (
+              <Tab label='Standings' />
+            )}
             {conditions.sessionIsActive(session) && (
               <Tab label='Reporting' />
             )}
           </Tabs>
           {tabValue === 0 && (
-            <StandingsTable />
+            <CardPool />
           )}
           {tabValue === 1 && (
-            <CardPool />
+            <StandingsTable />
           )}
           {tabValue === 2 && (
             <Box>TBD</Box>

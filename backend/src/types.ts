@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-export const MagicCardPoolSchema = z.record(z.string(), z.number());
+const MagicCardSchema = z.object({
+  quantity: z.number(),
+  mana_cost: z.string(),
+});
+export const MagicCardPoolSchema = z.record(z.string(), MagicCardSchema);
 export type MagicCardPool = z.infer<typeof MagicCardPoolSchema>;
 
 const MoxfieldCardSchema = z.object({

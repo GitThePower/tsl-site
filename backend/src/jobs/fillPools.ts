@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { z } from 'zod';
 import { listItems, updateItem } from '../utils/ddb';
-import { LeagueSchema, MagicCardPool, MoxfieldBoard, MoxfieldContent, MoxfieldContentSchema, FillPoolsLambdaEnvSchema, UserSchema } from '../../src/types';
+import { LeagueSchema, MoxfieldContent, MoxfieldContentSchema, FillPoolsLambdaEnvSchema, UserSchema } from '../../src/types';
 
 const getMoxfieldContent = async (url: string): Promise<MoxfieldContent> => {
   let content: MoxfieldContent;
@@ -17,21 +17,6 @@ const getMoxfieldContent = async (url: string): Promise<MoxfieldContent> => {
   }
 
   return content;
-};
-
-const fillPool = async (boards: MoxfieldBoard[]): Promise<MagicCardPool> => {
-  const pool: MagicCardPool = {};
-  const boardsP = boards.map(async (board) => {
-    const cardsP = Object.keys(board.cards).map((key) => {
-      const cardName = board.cards[key].card.name;
-      const quantity = board.cards[key].quantity;
-      if (pool.hasOwnProperty(cardName)) pool[cardName] = pool[cardName] + quantity;
-      else pool[cardName] = quantity;
-    });
-    await Promise.all(cardsP);
-  });
-  await Promise.all(boardsP);
-  return pool;
 };
 
 const extractTableContents = async (tableName: string): Promise<object> => {
