@@ -10,6 +10,7 @@ import {
 import { useContext, useState } from 'react';
 import { AppContext } from '../App';
 import { League, MagicCardPool } from '../../../backend/src/types';
+import ManaCost from './ManaCost';
 
 const getInitialSearchResults = (league: League): Record<string, MagicCardPool> => {
   const searchResults: Record<string, MagicCardPool> = {};
@@ -79,7 +80,7 @@ const CardPool = () => {
       />
       {Object.keys(filteredResults).map((username: string) => (
         <List
-          sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}
+          sx={{ width: '100%', maxWidth: 360 }}
           component="nav"
           aria-labelledby="nested-list-subheader"
           subheader={
@@ -90,10 +91,10 @@ const CardPool = () => {
         >
           {Object.keys(filteredResults[username]).map((cardName: string) => (
             <ListItemButton>
-              <ListItemIcon>
-                {filteredResults[username][cardName].mana_cost}
-              </ListItemIcon>
               <ListItemText primary={`${cardName} x${filteredResults[username][cardName].quantity}`} />
+              <ListItemIcon>
+                <ManaCost manaCost={filteredResults[username][cardName].mana_cost} />
+              </ListItemIcon>
             </ListItemButton>
           ))}
         </List>
