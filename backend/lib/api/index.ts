@@ -1,4 +1,4 @@
-import { DomainName, EndpointType, IResource, LambdaIntegration, RestApi } from 'aws-cdk-lib/aws-apigateway';
+import { DomainName, EndpointType, IResource, LambdaIntegration, Period, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { AnyPrincipal, Effect, PolicyDocument, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
@@ -44,6 +44,17 @@ export class Api extends RestApi {
       recordName: config.domainNameApi,
       target: RecordTarget.fromAlias(new ApiGatewayDomain(customDomain)),
       zone: props.domainHostedZone,
+    });
+
+    this.addUsagePlan(`${id}-api-usage-plan`, {
+      quota: {
+        limit: 5000000,
+        period: Period.MONTH,
+      },
+      throttle: {
+        burstLimit: 2,
+        rateLimit: 10,
+      },
     });
   }
 
