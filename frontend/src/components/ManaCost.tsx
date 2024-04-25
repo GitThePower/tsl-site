@@ -7,7 +7,9 @@ const ManaCost = (props: ManaCostProps) => {
   return (
     <div>
       {manaSymbols.map((symbol) => (
-        <i className={`ms ms-${symbol.toLowerCase()}`}></i>
+        <i
+        className={`ms ms-${symbol.toLowerCase()} ms-cost ms-shadow`}
+        / >
       ))}
     </div>
   );
