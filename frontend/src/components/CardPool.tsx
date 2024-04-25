@@ -1,4 +1,8 @@
+import { ExpandMore } from '@mui/icons-material';
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Box,
   List,
   ListItemButton,
@@ -6,6 +10,7 @@ import {
   ListItemText,
   ListSubheader,
   TextField,
+  Typography,
 } from '@mui/material';
 import { useContext, useState } from 'react';
 import { AppContext } from '../App';
@@ -21,7 +26,9 @@ const getInitialSearchResults = (league: League): Record<string, MagicCardPool> 
         Object.values(league.cardPool[username].boards).forEach((board) => {
           Object.values(board.cards).forEach((card) => {
             const cardName = card.card.name;
-            if (cardName in userPool) {
+            if (['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'].includes(cardName)) {
+              // Do not add basics to the pool
+            } else if (cardName in userPool) {
               userPool[cardName].quantity += card.quantity;
             } else {
               userPool[cardName] = {
@@ -64,13 +71,29 @@ const CardPool = () => {
           filteredUserPool[cardName] = searchResults[username][cardName];
         }
       });
-      prev[username] = filteredUserPool;
+      if (Object.keys(filteredUserPool).length > 0) {
+        prev[username] = filteredUserPool;
+      }
       return prev;
     }, {} as Record<string, MagicCardPool>);
   }
 
   return (
     <Box sx={{ width: '100%', overflowY: 'auto' }}>
+    <Accordion>
+      <AccordionSummary expandIcon={<ExpandMore />}>
+        <Typography sx={{ fontWeight: 'bold' }}>
+          {'How it works'}
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails>
+        <ul>
+          <li>Type the name of the card you are looking for in the search box</li>
+          <li>Cards matching your search will appear under the name of the user who owns them</li>
+          <li>Basic lands are not included in the pool</li>
+        </ul>
+      </AccordionDetails>
+   </Accordion>
       <TextField
         label='Search'
         value={searchTerm}
