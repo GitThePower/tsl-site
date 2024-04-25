@@ -1,4 +1,4 @@
-import { DomainName, EndpointType, IResource, LambdaIntegration, Period, RestApi } from 'aws-cdk-lib/aws-apigateway';
+import { DomainName, EndpointType, IApiKey, IResource, IUsagePlan, LambdaIntegration, Period, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { AnyPrincipal, Effect, PolicyDocument, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
@@ -8,11 +8,16 @@ import { Construct } from 'constructs';
 import config from '../config';
 
 interface ApiProps {
+  apiKeyValue: string;
   domainCert: ICertificate;
   domainHostedZone: IHostedZone;
 }
 
 export class Api extends RestApi {
+
+  public apiKey: IApiKey;
+  public usagePlan: IUsagePlan;
+
   constructor(scope: Construct, id: string, props: ApiProps) {
     super(scope, id, {
       cloudWatchRole: false,
@@ -46,7 +51,12 @@ export class Api extends RestApi {
       zone: props.domainHostedZone,
     });
 
-    this.addUsagePlan(`${id}-api-usage-plan`, {
+    this.usagePlan = this.addUsagePlan(`${id}-api-usage-plan`, {
+      apiStages: [
+        {
+          stage: this.deploymentStage,
+        }
+      ],
       quota: {
         limit: 5000000,
         period: Period.MONTH,
@@ -56,6 +66,11 @@ export class Api extends RestApi {
         rateLimit: 10,
       },
     });
+    this.apiKey = this.addApiKey(`${id}-api-key`, {
+      apiKeyName: `${id}-api-key`,
+      value: props.apiKeyValue,
+    });
+    this.usagePlan.addApiKey(this.apiKey);
   }
 
   createLambdaBackedResource(resourceName: string, lambda: IFunction): IResource {
@@ -63,10 +78,18 @@ export class Api extends RestApi {
     const lambdaIntegration = new LambdaIntegration(lambda, {
       allowTestInvoke: false,
     });
-    resource.addMethod('POST', lambdaIntegration);         // C
-    resource.addMethod('GET', lambdaIntegration);          // R
-    resource.addMethod('PUT', lambdaIntegration);          // U
-    resource.addMethod('DELETE', lambdaIntegration);       // D
+    resource.addMethod('POST', lambdaIntegration, {         // C
+      apiKeyRequired: true,
+    });
+    resource.addMethod('GET', lambdaIntegration, {          // R
+      apiKeyRequired: true,
+    });
+    resource.addMethod('PUT', lambdaIntegration, {          // U
+      apiKeyRequired: true,
+    });
+    resource.addMethod('DELETE', lambdaIntegration, {       // D
+      apiKeyRequired: true,
+    });
     resource.addCorsPreflight({
       allowOrigins: [`https://${config.domainName}`, `https://${config.domainNameWww}`],
       allowMethods: ['POST', 'GET', 'PUT', 'DELETE'],

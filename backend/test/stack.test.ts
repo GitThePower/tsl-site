@@ -5,6 +5,7 @@ import { TslDotComStack } from '../lib/stack';
 test('Stack should have the following resource counts', () => {
   const app = new cdk.App();
   const stack = new TslDotComStack(app, 'MyTestStack', {
+    apiKeyValue: 'someKey',
     env: { account: '123412341234', region: 'us-east-1' },
   });
   const template = Template.fromStack(stack);

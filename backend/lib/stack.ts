@@ -9,20 +9,25 @@ import { LambdaFunction, LambdaRole } from './lambda';
 import Website from './website';
 import { ResourceLambdaEnv, FillPoolsLambdaEnv } from '../src/types';
 
+interface TslDotComStackProps extends StackProps {
+  apiKeyValue: string;
+}
+
 interface RestfulResourceProperties {
   lambda: LambdaFunction;
   table: DynamoDBTable;
 }
 
 export class TslDotComStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, props: TslDotComStackProps) {
     super(scope, id, props);
 
     const website = new Website(this, `${id}-site`);
 
     const restApi = new Api(this, `${id}-api`, {
-        domainCert: website.httpsCertificate,
-        domainHostedZone: website.hostedZone,
+      apiKeyValue: props.apiKeyValue,
+      domainCert: website.httpsCertificate,
+      domainHostedZone: website.hostedZone,
     });
 
     const createRestfulResource = (resource: string, pk: string): RestfulResourceProperties => {
@@ -43,7 +48,7 @@ export class TslDotComStack extends Stack {
       });
       table.grantFullAccess(lambdaRole);
       restApi.createLambdaBackedResource(resource, lambda);
-    
+
       return {
         lambda,
         table,

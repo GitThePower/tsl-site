@@ -1,18 +1,24 @@
 import { z } from 'zod';
-import config from '../../../backend/lib/config';
+import backendConfig from '../../../backend/lib/config';
 import { League, LeagueSchema, Session, SessionSchema, User, UserSchema } from '../../../backend/src/types';
+import { config } from '../../../local-config';
 
 const baseUrl = (process.env.NODE_ENV && process.env.NODE_ENV === 'dev') ?
- '/proxy' :
- `https://${config.domainNameApi}`;
+  '/proxy' :
+  `https://${backendConfig.domainNameApi}`;
+
+const sharedHeaders = {
+  'X-Api-Key': config.apiKeyValue,
+};
 
 const getUser = async (username: string): Promise<User> => {
   let user = {} as User;
   try {
-    const res = await fetch(`${baseUrl}/${config.resource_user}?username=${username}`, {
+    const res = await fetch(`${baseUrl}/${backendConfig.resource_user}?username=${username}`, {
       method: 'GET',
+      headers: sharedHeaders,
     })
-    .then(res => res.json());
+      .then(res => res.json());
     user = UserSchema.parse(res);
   } catch (e) {
     console.error(e);
@@ -24,10 +30,11 @@ const getUser = async (username: string): Promise<User> => {
 const listUsers = async (): Promise<User[]> => {
   let users = [] as User[];
   try {
-    const res = await fetch(`${baseUrl}/${config.resource_user}`, {
-      method: 'GET'
+    const res = await fetch(`${baseUrl}/${backendConfig.resource_user}`, {
+      method: 'GET',
+      headers: sharedHeaders,
     })
-    .then(res => res.json());
+      .then(res => res.json());
     users = z.array(UserSchema).parse(res);
   } catch (e) {
     console.error(e);
@@ -39,11 +46,12 @@ const listUsers = async (): Promise<User[]> => {
 const updateUser = async (username: string, update: User): Promise<User> => {
   let user = {} as User;
   try {
-    const res = await fetch(`${baseUrl}/${config.resource_user}?username=${username}`, {
+    const res = await fetch(`${baseUrl}/${backendConfig.resource_user}?username=${username}`, {
       method: 'PUT',
       body: JSON.stringify(update),
+      headers: sharedHeaders,
     })
-    .then(res => res.json());
+      .then(res => res.json());
     user = UserSchema.parse(res);
   } catch (e) {
     console.error(e);
@@ -54,9 +62,10 @@ const updateUser = async (username: string, update: User): Promise<User> => {
 
 const createSession = async (session: Session): Promise<void> => {
   try {
-    await fetch(`${baseUrl}/${config.resource_session}`, {
+    await fetch(`${baseUrl}/${backendConfig.resource_session}`, {
       method: 'POST',
       body: JSON.stringify(session),
+      headers: sharedHeaders,
     });
   } catch (e) {
     console.error(e);
@@ -66,10 +75,11 @@ const createSession = async (session: Session): Promise<void> => {
 const getSession = async (sessionid: string): Promise<Session> => {
   let session = {} as Session;
   try {
-    const res = await fetch(`${baseUrl}/${config.resource_session}?sessionid=${sessionid}`, {
+    const res = await fetch(`${baseUrl}/${backendConfig.resource_session}?sessionid=${sessionid}`, {
       method: 'GET',
+      headers: sharedHeaders,
     })
-    .then(res => res.json());
+      .then(res => res.json());
     session = SessionSchema.parse(res);
   } catch (e) {
     console.error(e);
@@ -83,10 +93,11 @@ const getSession = async (sessionid: string): Promise<Session> => {
 const listLeagues = async (): Promise<League[]> => {
   let leagues = [] as League[];
   try {
-    const res = await fetch(`${baseUrl}/${config.resource_league}`, {
-      method: 'GET'
+    const res = await fetch(`${baseUrl}/${backendConfig.resource_league}`, {
+      method: 'GET',
+      headers: sharedHeaders,
     })
-    .then(res => res.json());
+      .then(res => res.json());
     leagues = z.array(LeagueSchema).parse(res);
   } catch (e) {
     console.error(e);
