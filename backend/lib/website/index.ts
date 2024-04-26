@@ -29,7 +29,10 @@ export default class Website {
     );
     this.httpsCertificate = new acm.Certificate(scope, `${id}-cert`, {
       domainName: config.domainName,
-      subjectAlternativeNames: [config.domainNameWww],
+      subjectAlternativeNames: [
+        config.domainNameApi,
+        config.domainNameWww,
+      ],
       validation: acm.CertificateValidation.fromDns(this.hostedZone),
       certificateName: `${id}-cert`,
     });
