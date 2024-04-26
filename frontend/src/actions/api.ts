@@ -1,6 +1,5 @@
-import { z } from 'zod';
 import backendConfig from '../../../backend/lib/config';
-import { League, LeagueSchema, Session, SessionSchema, User, UserSchema } from '../../../backend/src/types';
+import { League, Session, SessionSchema, User } from '../../../backend/src/types';
 import { config } from '../../../local-config';
 
 const baseUrl = (process.env.NODE_ENV && process.env.NODE_ENV === 'dev') ?
@@ -19,7 +18,7 @@ const getUser = async (username: string): Promise<User> => {
       headers: sharedHeaders,
     })
       .then(res => res.json());
-    user = UserSchema.parse(res);
+    user = res;
   } catch (e) {
     console.error(e);
   }
@@ -35,7 +34,7 @@ const listUsers = async (): Promise<User[]> => {
       headers: sharedHeaders,
     })
       .then(res => res.json());
-    users = z.array(UserSchema).parse(res);
+    users = res;
   } catch (e) {
     console.error(e);
   }
@@ -52,7 +51,7 @@ const updateUser = async (username: string, update: User): Promise<User> => {
       headers: sharedHeaders,
     })
       .then(res => res.json());
-    user = UserSchema.parse(res);
+    user = res;
   } catch (e) {
     console.error(e);
   }
@@ -98,7 +97,7 @@ const listLeagues = async (): Promise<League[]> => {
       headers: sharedHeaders,
     })
       .then(res => res.json());
-    leagues = z.array(LeagueSchema).parse(res);
+    leagues = res;
   } catch (e) {
     console.error(e);
   }

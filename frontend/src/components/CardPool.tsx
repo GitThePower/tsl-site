@@ -14,8 +14,8 @@ import {
 } from '@mui/material';
 import { useContext, useState } from 'react';
 import { AppContext } from '../App';
-import { League, MagicCardPool } from '../../../backend/src/types';
 import ManaCost from './ManaCost';
+import { League, MagicCardPool } from '../../../backend/src/types';
 
 const getInitialSearchResults = (league: League): Record<string, MagicCardPool> => {
   const searchResults: Record<string, MagicCardPool> = {};
@@ -80,20 +80,20 @@ const CardPool = () => {
 
   return (
     <Box sx={{ width: '100%', overflowY: 'auto' }}>
-    <Accordion>
-      <AccordionSummary expandIcon={<ExpandMore />}>
-        <Typography sx={{ fontWeight: 'bold' }}>
-          {'How it works'}
-        </Typography>
-      </AccordionSummary>
-      <AccordionDetails>
-        <ul>
-          <li>Type the name of the card you are looking for in the search box</li>
-          <li>Cards matching your search will appear under the name of the user who owns them</li>
-          <li>Basic lands are not included in the pool</li>
-        </ul>
-      </AccordionDetails>
-   </Accordion>
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <Typography sx={{ fontWeight: 'bold' }}>
+            {'How it works'}
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <ul>
+            <li>Type the name of the card you are looking for in the search box</li>
+            <li>Cards matching your search will appear under the name of the user who owns them</li>
+            <li>Basic lands are not included in the pool</li>
+          </ul>
+        </AccordionDetails>
+      </Accordion>
       <TextField
         label='Search'
         value={searchTerm}
@@ -101,27 +101,29 @@ const CardPool = () => {
         fullWidth
         margin='normal'
       />
-      {Object.keys(filteredResults).map((username: string) => (
-        <List
-          sx={{ width: '100%', maxWidth: 360 }}
-          component="nav"
-          aria-labelledby="nested-list-subheader"
-          subheader={
-            <ListSubheader component="div" id="nested-list-subheader">
-              {username}
-            </ListSubheader>
-          }
-        >
-          {Object.keys(filteredResults[username]).map((cardName: string) => (
-            <ListItemButton>
-              <ListItemText primary={`${cardName} x${filteredResults[username][cardName].quantity}`} />
-              <ListItemIcon>
-                <ManaCost manaCost={filteredResults[username][cardName].mana_cost} />
-              </ListItemIcon>
-            </ListItemButton>
-          ))}
-        </List>
-      ))}
+      <Box>
+        {Object.keys(filteredResults).map((username: string) => (
+          <List
+            sx={{ width: '100%', maxWidth: 360 }}
+            component="nav"
+            aria-labelledby="nested-list-subheader"
+            subheader={
+              <ListSubheader component="div" id="nested-list-subheader">
+                {username}
+              </ListSubheader>
+            }
+          >
+            {Object.keys(filteredResults[username]).map((cardName: string) => (
+              <ListItemButton>
+                <ListItemText primary={`${cardName} x${filteredResults[username][cardName].quantity}`} />
+                <ListItemIcon>
+                  <ManaCost manaCost={filteredResults[username][cardName].mana_cost} />
+                </ListItemIcon>
+              </ListItemButton>
+            ))}
+          </List>
+        ))}
+      </Box>
     </Box>
   )
 };
