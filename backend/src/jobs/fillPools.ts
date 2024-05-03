@@ -45,7 +45,7 @@ export const handler = async (): Promise<void> => {
 
   const fillPoolsStartTime = Date.now();
   const fillPoolsPromises = activeLeagues.map(async (activeLeague) => {
-    const leaguePool: Record<string, MoxfieldContent> = {};
+    const leaguePool: Record<string, { decklistUrl: string, moxfieldContent: MoxfieldContent}> = {};
     const assemblePoolPromises = validatedUsers.map(async (user) => {
       const username = user.username ?? '';
       const userLeagues = user.leagues;
@@ -54,7 +54,10 @@ export const handler = async (): Promise<void> => {
         const decklistUrl = filteredUserLeagues[0].decklistUrl;
         try {
           const userContent = await getMoxfieldContent(decklistUrl);
-          leaguePool[username] = userContent;
+          leaguePool[username] = {
+            decklistUrl,
+            moxfieldContent: userContent
+          };
         } catch (e) {
           console.error(`Failed to get Moxfield content for ${username}: ${JSON.stringify(e)}`);
         }
