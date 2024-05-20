@@ -4,7 +4,12 @@ const MagicCardSchema = z.object({
   quantity: z.number(),
   mana_cost: z.string(),
 });
-export const MagicCardPoolSchema = z.record(z.string(), MagicCardSchema);
+export type MagicCard = z.infer<typeof MagicCardSchema>;
+
+export const MagicCardPoolSchema = z.object({
+  cardList: z.record(z.string(), MagicCardSchema),
+  decklistUrl: z.string(),
+});
 export type MagicCardPool = z.infer<typeof MagicCardPoolSchema>;
 
 const MoxfieldCardSchema = z.object({
@@ -48,7 +53,10 @@ export type FillPoolsLambdaEnv = z.infer<typeof FillPoolsLambdaEnvSchema>;
 
 export const LeagueSchema = z.object({
   leaguename: z.string(),
-  cardPool: z.record(z.string(), MoxfieldContentSchema),
+  cardPool: z.record(z.string(), z.object({
+    decklistUrl: z.string(),
+    moxfieldContent: MoxfieldContentSchema,
+  })),
   isActive: z.boolean(),
 })
   .partial()

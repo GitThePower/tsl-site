@@ -4,6 +4,7 @@ import {
   AccordionDetails,
   AccordionSummary,
   Box,
+  Link,
   List,
   ListItemButton,
   ListItemIcon,
@@ -15,23 +16,25 @@ import {
 import { useContext, useState } from 'react';
 import { AppContext } from '../App';
 import ManaCost from './ManaCost';
-import { League, MagicCardPool } from '../../../backend/src/types';
+import { League, MagicCard, MagicCardPool } from '../../../backend/src/types';
 
 const getInitialSearchResults = (league: League): Record<string, MagicCardPool> => {
   const searchResults: Record<string, MagicCardPool> = {};
   if (league.cardPool) {
     Object.keys(league.cardPool).forEach((username) => {
-      const userPool: MagicCardPool = {};
+      searchResults[username] = {} as MagicCardPool;
+      const userCardList = {} as Record<string, MagicCard>;
       if (league.cardPool) {
-        Object.values(league.cardPool[username].boards).forEach((board) => {
+        searchResults[username].decklistUrl = league.cardPool[username].decklistUrl;
+        Object.values(league.cardPool[username].moxfieldContent.boards).forEach((board) => {
           Object.values(board.cards).forEach((card) => {
             const cardName = card.card.name;
             if (['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'].includes(cardName)) {
               // Do not add basics to the pool
-            } else if (cardName in userPool) {
-              userPool[cardName].quantity += card.quantity;
+            } else if (cardName in userCardList) {
+              userCardList[cardName].quantity += card.quantity;
             } else {
-              userPool[cardName] = {
+              userCardList[cardName] = {
                 quantity: card.quantity,
                 mana_cost: card.card.mana_cost,
               }
@@ -39,12 +42,12 @@ const getInitialSearchResults = (league: League): Record<string, MagicCardPool> 
           });
         });
       }
-      searchResults[username] = Object.keys(userPool).sort().reduce(
+      searchResults[username].cardList = Object.keys(userCardList).sort().reduce(
         (sorted, key) => {
-          sorted[key] = userPool[key];
+          sorted[key] = userCardList[key];
           return sorted;
         },
-        {} as MagicCardPool,
+        {} as Record<string, MagicCard>,
       );
     });
   }
@@ -64,18 +67,20 @@ const CardPool = () => {
   const searchResults = getInitialSearchResults(league);
   let filteredResults = searchResults;
   if (searchTerm) {
-    filteredResults = Object.keys(searchResults).reduce((prev: Record<string, MagicCardPool>, username: string) => {
-      const filteredUserPool: MagicCardPool = {};
-      Object.keys(searchResults[username]).forEach((cardName) => {
-        if (cardName.toLowerCase().includes(searchTerm.toLowerCase())) {
-          filteredUserPool[cardName] = searchResults[username][cardName];
+      filteredResults = Object.keys(searchResults).reduce((prev, username) => {
+        const filteredUserPool = {} as MagicCardPool;
+        filteredUserPool.cardList = {} as Record<string, { quantity: number; mana_cost: string; }>
+        Object.keys(searchResults[username].cardList).forEach((cardName) => {
+          if (cardName.toLowerCase().includes(searchTerm.toLowerCase())) {
+            filteredUserPool.cardList[cardName] = searchResults[username].cardList[cardName];
+          }
+        });
+        if (Object.keys(filteredUserPool.cardList).length > 0) {
+          filteredUserPool.decklistUrl = searchResults[username].decklistUrl;
+          prev[username] = filteredUserPool;
         }
-      });
-      if (Object.keys(filteredUserPool).length > 0) {
-        prev[username] = filteredUserPool;
-      }
-      return prev;
-    }, {} as Record<string, MagicCardPool>);
+        return prev;
+      }, {} as Record<string, MagicCardPool>);
   }
 
   return (
@@ -91,6 +96,8 @@ const CardPool = () => {
             <li>Type the name of the card you are looking for in the search box</li>
             <li>Cards matching your search will appear under the name of the user who owns them</li>
             <li>Basic lands are not included in the pool</li>
+            <li>Pool is updated automatically at ~8pm EST every night</li>
+            <li>Users are added manually. Message me if you don't see your pool listed and want to be added</li>
           </ul>
         </AccordionDetails>
       </Accordion>
@@ -109,15 +116,18 @@ const CardPool = () => {
             aria-labelledby="nested-list-subheader"
             subheader={
               <ListSubheader component="div" id="nested-list-subheader">
-                {username}
+                {`${username} `}
+                [<Link rel="noopener noreferrer" href={filteredResults[username].decklistUrl} target="_blank" underline="hover">
+                  Decklist
+                </Link>]
               </ListSubheader>
             }
           >
-            {Object.keys(filteredResults[username]).map((cardName: string) => (
+            {Object.keys(filteredResults[username].cardList).map((cardName: string) => (
               <ListItemButton>
-                <ListItemText primary={`${cardName} x${filteredResults[username][cardName].quantity}`} />
+                <ListItemText primary={`${cardName} x${filteredResults[username].cardList[cardName].quantity}`} />
                 <ListItemIcon>
-                  <ManaCost manaCost={filteredResults[username][cardName].mana_cost} />
+                  <ManaCost manaCost={filteredResults[username].cardList[cardName].mana_cost} />
                 </ListItemIcon>
               </ListItemButton>
             ))}
