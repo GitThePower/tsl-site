@@ -9,6 +9,7 @@
     "cdk": "cdk",
     "cleanup": "@powershell -NoProfile -ExecutionPolicy Unrestricted -Command ./cleanUp.ps1",
     "deploy": "tsc && jest -- stack.test.ts && cdk synth && cdk deploy --require-approval never && npm run cleanup",
+    "sandbox": "jest -- test/sandbox",
     "test": "jest"
   },
   "repository": {

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { listItems, updateItem } from '../utils/ddb';
 import { LeagueSchema, MoxfieldContent, MoxfieldContentSchema, FillPoolsLambdaEnvSchema, UserSchema } from '../../src/types';
 
-const getMoxfieldContent = async (url: string): Promise<MoxfieldContent> => {
+export const getMoxfieldContent = async (url: string): Promise<MoxfieldContent> => {
   let content: MoxfieldContent;
   try {
     const id = url.split('/')[4];

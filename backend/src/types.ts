@@ -19,6 +19,7 @@ const MoxfieldCardSchema = z.object({
     colors: z.array(z.string()),
     mana_cost: z.string(),
     name: z.string(),
+    scryfall_id: z.string().optional(),
     set_name: z.string(),
   }),
 });
