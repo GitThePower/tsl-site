@@ -6,16 +6,12 @@ import config from './config';
 import { DynamoDBTable } from './dynamodb';
 import { CronJob } from './events';
 import { LambdaFunction, LambdaRole } from './lambda';
+import { S3 } from './s3';
 import Website from './website';
 import { ResourceLambdaEnv, FillPoolsLambdaEnv } from '../src/types';
 
 interface TslDotComStackProps extends StackProps {
   apiKeyValue: string;
-}
-
-interface RestfulResourceProperties {
-  lambda: LambdaFunction;
-  table: DynamoDBTable;
 }
 
 export class TslDotComStack extends Stack {
@@ -30,7 +26,7 @@ export class TslDotComStack extends Stack {
       domainHostedZone: website.hostedZone,
     });
 
-    const createRestfulResource = (resource: string, pk: string): RestfulResourceProperties => {
+    const createRestfulResource = (resource: string, pk: string, extendedEnv: Record<string, string>) => {
       const table = new DynamoDBTable(this, `${id}-${resource}-table`, {
         partitionKey: {
           name: pk,
@@ -39,6 +35,7 @@ export class TslDotComStack extends Stack {
       });
       const lambdaEnv: ResourceLambdaEnv = {
         DB_TABLE_NAME: table.tableName,
+        ...extendedEnv,
       };
       const lambdaRole = new LambdaRole(this, `${id}-${resource}-role`);
       const lambda = new LambdaFunction(this, `${id}-${resource}-accessor`, {
@@ -50,18 +47,23 @@ export class TslDotComStack extends Stack {
       restApi.createLambdaBackedResource(resource, lambda);
 
       return {
-        lambda,
+        lambdaRole,
         table,
       };
     };
 
-    const leagueResource = createRestfulResource(config.resource_league, config.resource_league_pk);
+    const leagueDataBucket = new S3(this, `${id}-${config.resource_league}`.toLowerCase());
+    const leagueResource = createRestfulResource(config.resource_league, config.resource_league_pk, {
+      S3_BUCKET_NAME: leagueDataBucket.bucketName,
+    });
+    leagueDataBucket.grantReadWrite(leagueResource.lambdaRole);
 
-    createRestfulResource(config.resource_session, config.resource_session_pk);
+    createRestfulResource(config.resource_session, config.resource_session_pk, {});
 
-    const userResource = createRestfulResource(config.resource_user, config.resource_user_pk);
+    const userResource = createRestfulResource(config.resource_user, config.resource_user_pk, {});
 
     const fillPoolsLambdaEnv: FillPoolsLambdaEnv = {
+      LEAGUE_BUCKET_NAME: leagueDataBucket.bucketName,
       LEAGUE_TABLE_NAME: leagueResource.table.tableName,
       USER_TABLE_NAME: userResource.table.tableName,
     };
@@ -72,7 +74,8 @@ export class TslDotComStack extends Stack {
       role: fillPoolsLambdaRole,
       timeout: Duration.minutes(1),
     });
-    leagueResource.table.grantReadWriteData(fillPoolsLambdaRole);
+    leagueDataBucket.grantPut(fillPoolsLambdaRole);
+    leagueResource.table.grantReadData(fillPoolsLambdaRole);
     userResource.table.grantReadData(fillPoolsLambdaRole);
 
     new CronJob(this, `${id}-${config.job_fillPools}-schedule`, {

@@ -18,5 +18,5 @@ test('Stack should have the following resource counts', () => {
   template.resourceCountIs('AWS::IAM::Policy', 5);
   template.resourceCountIs('AWS::IAM::Role', 5);
   template.resourceCountIs('AWS::Lambda::Function', 5);
-  template.resourceCountIs('AWS::S3::Bucket', 1);
+  template.resourceCountIs('AWS::S3::Bucket', 2);
 });

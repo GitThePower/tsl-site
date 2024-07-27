@@ -27,7 +27,6 @@ const MoxfieldBoardSchema = z.object({
   count: z.number(),
   cards: z.record(z.string(), MoxfieldCardSchema),
 });
-export type MoxfieldBoard = z.infer<typeof MoxfieldBoardSchema>;
 export const MoxfieldContentSchema = z.object({
   boards: z.object({
     mainboard: MoxfieldBoardSchema,
@@ -37,12 +36,20 @@ export const MoxfieldContentSchema = z.object({
 });
 export type MoxfieldContent = z.infer<typeof MoxfieldContentSchema>;
 
+export const MoxfieldPoolSchema = z.record(z.string(), z.object({
+  decklistUrl: z.string(),
+  moxfieldContent: MoxfieldContentSchema,
+}));
+export type MoxfieldPool = z.infer<typeof MoxfieldPoolSchema>;
+
 export const ResourceLambdaEnvSchema = z.object({
   DB_TABLE_NAME: z.string(),
+  S3_BUCKET_NAME: z.string().optional(),
 });
 export type ResourceLambdaEnv = z.infer<typeof ResourceLambdaEnvSchema>;
 
 export const FillPoolsLambdaEnvSchema = z.object({
+  LEAGUE_BUCKET_NAME: z.string(),
   LEAGUE_TABLE_NAME: z.string(),
   USER_TABLE_NAME: z.string(),
 });
@@ -54,10 +61,8 @@ export type FillPoolsLambdaEnv = z.infer<typeof FillPoolsLambdaEnvSchema>;
 
 export const LeagueSchema = z.object({
   leaguename: z.string(),
-  cardPool: z.record(z.string(), z.object({
-    decklistUrl: z.string(),
-    moxfieldContent: MoxfieldContentSchema,
-  })),
+  cardPool: MoxfieldPoolSchema,
+  cardPoolKey: z.string(),
   isActive: z.boolean(),
 })
   .partial()
