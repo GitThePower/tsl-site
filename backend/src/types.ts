@@ -63,7 +63,7 @@ export type FillPoolsLambdaEnv = z.infer<typeof FillPoolsLambdaEnvSchema>;
 
 export const LeagueSchema = z.object({
   leaguename: z.string(),
-  cardPool: MoxfieldPoolSchema,
+  cardPool: z.record(z.string(), MagicCardPoolSchema),
   cardPoolKey: z.string(),
   isActive: z.boolean(),
 })

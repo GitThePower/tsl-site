@@ -21,51 +21,7 @@ import {
 import { useContext, useState } from 'react';
 import { AppContext } from '../App';
 import ManaCost from './ManaCost';
-import { League, MagicCard, MagicCardPool } from '../../../backend/src/types';
-
-const getInitialSearchResults = (league: League): Record<string, MagicCardPool> => {
-  const searchResults: Record<string, MagicCardPool> = {};
-  if (league.cardPool) {
-    Object.keys(league.cardPool).forEach((username) => {
-      searchResults[username] = {} as MagicCardPool;
-      const userCardList = {} as Record<string, MagicCard>;
-      if (league.cardPool) {
-        searchResults[username].decklistUrl = league.cardPool[username].decklistUrl;
-        Object.values(league.cardPool[username].moxfieldContent.boards).forEach((board) => {
-          Object.values(board.cards).forEach((card) => {
-            const cardName = card.card.name;
-            if (['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'].includes(cardName)) {
-              // Do not add basics to the pool
-            } else if (cardName in userCardList) {
-              userCardList[cardName].quantity += card.quantity;
-            } else {
-              userCardList[cardName] = {
-                name: cardName,
-                quantity: card.quantity,
-                mana_cost: card.card.mana_cost,
-                scryfall_id: card.card?.scryfall_id,
-              }
-            }
-          });
-        });
-      }
-      searchResults[username].cardList = Object.keys(userCardList).sort().reduce(
-        (sorted, key) => {
-          sorted[key] = userCardList[key];
-          return sorted;
-        },
-        {} as Record<string, MagicCard>,
-      );
-    });
-  }
-  return Object.keys(searchResults).sort().reduce(
-    (sorted, key) => {
-      sorted[key] = searchResults[key];
-      return sorted;
-    },
-    {} as Record<string, MagicCardPool>,
-  );
-};
+import { MagicCard, MagicCardPool } from '../../../backend/src/types';
 
 const CardPool = () => {
   const { league } = useContext(AppContext);
@@ -82,7 +38,7 @@ const CardPool = () => {
     setOpenPopup(false);
   };
 
-  const searchResults = getInitialSearchResults(league);
+  const searchResults = league.cardPool || {} as Record<string, MagicCardPool>;
   let filteredResults = searchResults;
   if (searchTerm) {
       filteredResults = Object.keys(searchResults).reduce((prev, username) => {

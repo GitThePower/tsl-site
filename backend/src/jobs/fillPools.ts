@@ -1,7 +1,16 @@
 import axios from 'axios';
 import { z } from 'zod';
 import { listItems } from '../utils/ddb';
-import { FillPoolsLambdaEnvSchema, LeagueSchema, MoxfieldContent, MoxfieldContentSchema, MoxfieldPool, UserSchema } from '../../src/types';
+import {
+  FillPoolsLambdaEnvSchema,
+  LeagueSchema,
+  MagicCard,
+  MagicCardPool,
+  MoxfieldContent,
+  MoxfieldContentSchema,
+  MoxfieldPool,
+  UserSchema,
+} from '../../src/types';
 import { putObject } from '../utils/s3';
 
 export const getMoxfieldContent = async (url: string): Promise<MoxfieldContent> => {
@@ -18,6 +27,46 @@ export const getMoxfieldContent = async (url: string): Promise<MoxfieldContent> 
   }
 
   return content;
+};
+
+const formatCardPool = (leaguePool: MoxfieldPool): Record<string, MagicCardPool> => {
+  const searchResults: Record<string, MagicCardPool> = {};
+  Object.keys(leaguePool).forEach((username) => {
+    searchResults[username] = {} as MagicCardPool;
+    const userCardList = {} as Record<string, MagicCard>;
+    searchResults[username].decklistUrl = leaguePool[username].decklistUrl;
+    Object.values(leaguePool[username].moxfieldContent.boards).forEach((board) => {
+      Object.values(board.cards).forEach((card) => {
+        const cardName = card.card.name;
+        if (['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'].includes(cardName)) {
+          // Do not add basics to the pool
+        } else if (cardName in userCardList) {
+          userCardList[cardName].quantity += card.quantity;
+        } else {
+          userCardList[cardName] = {
+            name: cardName,
+            quantity: card.quantity,
+            mana_cost: card.card.mana_cost,
+            scryfall_id: card.card?.scryfall_id,
+          }
+        }
+      });
+    });
+    searchResults[username].cardList = Object.keys(userCardList).sort().reduce(
+      (sorted, key) => {
+        sorted[key] = userCardList[key];
+        return sorted;
+      },
+      {} as Record<string, MagicCard>,
+    );
+  });
+  return Object.keys(searchResults).sort().reduce(
+    (sorted, key) => {
+      sorted[key] = searchResults[key];
+      return sorted;
+    },
+    {} as Record<string, MagicCardPool>,
+  );
 };
 
 export const handler = async (): Promise<void> => {
@@ -59,8 +108,9 @@ export const handler = async (): Promise<void> => {
     });
     await Promise.all(assemblePoolPromises);
 
+    const cardPool = formatCardPool(leaguePool);
     const s3Input = {
-      Body: JSON.stringify(leaguePool),
+      Body: JSON.stringify(cardPool),
       Bucket: LEAGUE_BUCKET_NAME,
       Key: activeLeague.cardPoolKey,
     };

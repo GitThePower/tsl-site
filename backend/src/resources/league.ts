@@ -4,8 +4,8 @@ import { z } from 'zod';
 import {
   League,
   LeagueSchema,
-  MoxfieldPool,
-  MoxfieldPoolSchema,
+  MagicCardPool,
+  MagicCardPoolSchema,
   ResourceLambdaEnvSchema,
 } from '../types';
 import {
@@ -29,7 +29,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
           Bucket: S3_BUCKET_NAME,
           Key: league.cardPoolKey,
         });
-        const cardPool = {} as MoxfieldPool;
+        const cardPool = {} as Record<string, MagicCardPool>;
         league = { ...league, cardPool, cardPoolKey: '[ HIDDEN ]' }
         return getResponse(200, JSON.stringify(league));
       }
@@ -44,7 +44,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
           Key: league.cardPoolKey,
         });
         const cardPoolString = z.string().parse(await Body?.transformToString());
-        const cardPool = MoxfieldPoolSchema.parse(JSON.parse(cardPoolString));
+        const cardPool = z.record(z.string(), MagicCardPoolSchema).parse(JSON.parse(cardPoolString));
         league = { ...league, cardPool, cardPoolKey: '[ HIDDEN ]' }
         return getResponse(200, JSON.stringify(league));
       }
@@ -60,7 +60,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
             Key: league.cardPoolKey,
           });
           const cardPoolString = z.string().parse(await Body?.transformToString());
-          const cardPool = MoxfieldPoolSchema.parse(JSON.parse(cardPoolString));
+          const cardPool = z.record(z.string(), MagicCardPoolSchema).parse(JSON.parse(cardPoolString));
           return { ...league, cardPool, cardPoolKey: '[ HIDDEN ]' };
         });
         const leagues: League[] = await Promise.all(leaguePromises);
@@ -102,7 +102,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
           Key: league.cardPoolKey,
         });
         const cardPoolString = z.string().parse(await Body?.transformToString());
-        const cardPool = MoxfieldPoolSchema.parse(JSON.parse(cardPoolString));
+        const cardPool = z.record(z.string(), MagicCardPoolSchema).parse(JSON.parse(cardPoolString));
         league = { ...league, cardPool, cardPoolKey: '[ HIDDEN ]' }
         return getResponse(200, JSON.stringify(league));
       }
