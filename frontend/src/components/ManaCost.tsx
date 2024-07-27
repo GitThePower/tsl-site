@@ -1,3 +1,5 @@
+import { v4 } from 'uuid';
+
 interface ManaCostProps {
   manaCost: string;
 }
@@ -9,6 +11,7 @@ const ManaCost = (props: ManaCostProps) => {
       {manaSymbols.map((symbol) => (
         <i
         className={`ms ms-${symbol.toLowerCase()} ms-cost ms-shadow`}
+        key={`${symbol}-${v4()}`}
         / >
       ))}
     </div>

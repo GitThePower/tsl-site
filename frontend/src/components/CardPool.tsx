@@ -85,6 +85,7 @@ const CardPool = () => {
       <Box>
         {Object.keys(filteredResults).map((username: string) => (
           <List
+            key={username}
             sx={{ width: '100%', maxWidth: 360 }}
             component="nav"
             aria-labelledby="nested-list-subheader"
@@ -98,7 +99,7 @@ const CardPool = () => {
             }
           >
             {Object.keys(filteredResults[username].cardList).map((cardName: string) => (
-              <ListItemButton key={cardName} onClick={() => handleCardClick(filteredResults[username].cardList[cardName])}>
+              <ListItemButton key={`${username}-${cardName}`} onClick={() => handleCardClick(filteredResults[username].cardList[cardName])}>
                 <ListItemText primary={`${cardName} x${filteredResults[username].cardList[cardName].quantity}`} />
                 <ListItemIcon>
                   <ManaCost manaCost={filteredResults[username].cardList[cardName].mana_cost} />

@@ -6,22 +6,15 @@ import {
   TableContainer,
   TableHead,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { v4 } from 'uuid';
 import StandingsTableRow from './StandingsTableRow';
-import api from '../actions/api';
 import { User } from '../../../backend/src/types';
 
-const StandingsTable = () => {
-  const [users, setUsers] = useState([] as User[]);
+interface StandingsTableProps {
+  users: User[];
+}
 
-  useEffect(() => {
-    const fillTable = async () => {
-      const userResults = await api.listUsers();
-      setUsers(userResults);
-    };
-    fillTable();
-  });
-
+const StandingsTable = (props: StandingsTableProps) => {
   return (
     <Box sx={{ width: '100%', overflowY: 'auto' }}>
       <TableContainer component={Paper}>
@@ -35,8 +28,9 @@ const StandingsTable = () => {
             />
           </TableHead>
           <TableBody>
-            {users.map((user, idx) =>
+            {props.users.map((user, idx) =>
               <StandingsTableRow
+                key={`${user.username}${v4()}`}
                 rank={`${idx + 1}`}
                 name={user.username || ''}
                 weeklyWPrcnt={`${0}`}
