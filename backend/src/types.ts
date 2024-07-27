@@ -1,8 +1,10 @@
 import { z } from 'zod';
 
 const MagicCardSchema = z.object({
+  name: z.string(),
   quantity: z.number(),
   mana_cost: z.string(),
+  scryfall_id: z.string().optional(),
 });
 export type MagicCard = z.infer<typeof MagicCardSchema>;
 

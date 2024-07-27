@@ -4,6 +4,11 @@ import {
   AccordionDetails,
   AccordionSummary,
   Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Link,
   List,
   ListItemButton,
@@ -35,8 +40,10 @@ const getInitialSearchResults = (league: League): Record<string, MagicCardPool> 
               userCardList[cardName].quantity += card.quantity;
             } else {
               userCardList[cardName] = {
+                name: cardName,
                 quantity: card.quantity,
                 mana_cost: card.card.mana_cost,
+                scryfall_id: card.card?.scryfall_id,
               }
             }
           });
@@ -62,14 +69,25 @@ const getInitialSearchResults = (league: League): Record<string, MagicCardPool> 
 
 const CardPool = () => {
   const { league } = useContext(AppContext);
+  const [openPopup, setOpenPopup] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCard, setSelectedCard] = useState({} as MagicCard);
+
+  const handleCardClick = (card: MagicCard) => {
+    setSelectedCard(card);
+    setOpenPopup(true);
+  };
+
+  const handleClosePopup = () => {
+    setOpenPopup(false);
+  };
 
   const searchResults = getInitialSearchResults(league);
   let filteredResults = searchResults;
   if (searchTerm) {
       filteredResults = Object.keys(searchResults).reduce((prev, username) => {
         const filteredUserPool = {} as MagicCardPool;
-        filteredUserPool.cardList = {} as Record<string, { quantity: number; mana_cost: string; }>
+        filteredUserPool.cardList = {} as Record<string, MagicCard>
         Object.keys(searchResults[username].cardList).forEach((cardName) => {
           if (cardName.toLowerCase().includes(searchTerm.toLowerCase())) {
             filteredUserPool.cardList[cardName] = searchResults[username].cardList[cardName];
@@ -124,7 +142,7 @@ const CardPool = () => {
             }
           >
             {Object.keys(filteredResults[username].cardList).map((cardName: string) => (
-              <ListItemButton>
+              <ListItemButton key={cardName} onClick={() => handleCardClick(filteredResults[username].cardList[cardName])}>
                 <ListItemText primary={`${cardName} x${filteredResults[username].cardList[cardName].quantity}`} />
                 <ListItemIcon>
                   <ManaCost manaCost={filteredResults[username].cardList[cardName].mana_cost} />
@@ -134,6 +152,25 @@ const CardPool = () => {
           </List>
         ))}
       </Box>
+      <Dialog open={openPopup} onClose={handleClosePopup}>
+        <DialogTitle>{selectedCard.name ? selectedCard.name : 'Popup'}</DialogTitle>
+        <DialogContent>
+          {selectedCard && (
+              <img 
+                src={
+                  selectedCard.scryfall_id ?
+                  `https://api.scryfall.com/cards/${selectedCard.scryfall_id}?format=image` :
+                  undefined
+                } 
+                alt={selectedCard.name} 
+                style={{ width: '100%' }}
+              />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClosePopup}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 };
