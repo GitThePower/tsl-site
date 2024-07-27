@@ -1,9 +1,10 @@
 import axios from 'axios';
 import { z } from 'zod';
-import { listItems, updateItem } from '../utils/ddb';
-import { LeagueSchema, MoxfieldContent, MoxfieldContentSchema, FillPoolsLambdaEnvSchema, UserSchema } from '../../src/types';
+import { listItems } from '../utils/ddb';
+import { FillPoolsLambdaEnvSchema, LeagueSchema, MoxfieldContent, MoxfieldContentSchema, MoxfieldPool, UserSchema } from '../../src/types';
+import { putObject } from '../utils/s3';
 
-const getMoxfieldContent = async (url: string): Promise<MoxfieldContent> => {
+export const getMoxfieldContent = async (url: string): Promise<MoxfieldContent> => {
   let content: MoxfieldContent;
   try {
     const id = url.split('/')[4];
@@ -19,33 +20,26 @@ const getMoxfieldContent = async (url: string): Promise<MoxfieldContent> => {
   return content;
 };
 
-const extractTableContents = async (tableName: string): Promise<object> => {
-  const listTableResult = await listItems(tableName);
-  if (listTableResult.statusCode !== 200)
-    throw new Error(listTableResult.body);
-  return JSON.parse(listTableResult.body);
-};
-
 export const handler = async (): Promise<void> => {
   const jobStartTime = Date.now();
-  const { LEAGUE_TABLE_NAME, USER_TABLE_NAME } = FillPoolsLambdaEnvSchema.parse(process.env);
+  const { LEAGUE_BUCKET_NAME, LEAGUE_TABLE_NAME, USER_TABLE_NAME } = FillPoolsLambdaEnvSchema.parse(process.env);
 
   const leagueTableScanStartTime = Date.now();
-  const allLeagues = await extractTableContents(LEAGUE_TABLE_NAME);
+  const allLeagues = await listItems(LEAGUE_TABLE_NAME);
   const leagueTableScanDuration = Date.now() - leagueTableScanStartTime;
 
-  const validatedLeagues = z.array(LeagueSchema).parse(allLeagues);
+  const validatedLeagues = z.array(LeagueSchema).parse(allLeagues.Items);
   const activeLeagues = validatedLeagues.filter((league) => league.isActive && league.isActive === true);
 
   const userTableScanStartTime = Date.now();
-  const usersList = await extractTableContents(USER_TABLE_NAME);
+  const usersList = await listItems(USER_TABLE_NAME);
   const userTableScanDuration = Date.now() - userTableScanStartTime;
 
-  const validatedUsers = z.array(UserSchema).parse(usersList);
+  const validatedUsers = z.array(UserSchema).parse(usersList.Items);
 
   const fillPoolsStartTime = Date.now();
   const fillPoolsPromises = activeLeagues.map(async (activeLeague) => {
-    const leaguePool: Record<string, { decklistUrl: string, moxfieldContent: MoxfieldContent}> = {};
+    const leaguePool: MoxfieldPool = {};
     const assemblePoolPromises = validatedUsers.map(async (user) => {
       const username = user.username ?? '';
       const userLeagues = user.leagues;
@@ -64,13 +58,17 @@ export const handler = async (): Promise<void> => {
       }
     });
     await Promise.all(assemblePoolPromises);
-    const leagueQuery = LeagueSchema.safeParse({ leaguename: activeLeague.leaguename });
-    const leagueUpdate = LeagueSchema.safeParse({ cardPool: leaguePool });
-    const updatePoolResult = await updateItem(LEAGUE_TABLE_NAME, leagueQuery, leagueUpdate);
-    if (updatePoolResult.statusCode === 200) {
+
+    const s3Input = {
+      Body: JSON.stringify(leaguePool),
+      Bucket: LEAGUE_BUCKET_NAME,
+      Key: activeLeague.cardPoolKey,
+    };
+    try {
+      await putObject(s3Input);
       console.log(`Successfully updated pool for ${activeLeague.leaguename}!`);
-    } else {
-      console.error(`Failed to update pool for ${activeLeague.leaguename}: ${updatePoolResult.body}`);
+    } catch (e) {
+      console.error(`Failed to update pool for ${activeLeague.leaguename}: ${e}`);
     }
   });
   await Promise.all(fillPoolsPromises);

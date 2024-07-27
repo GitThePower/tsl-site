@@ -1,6 +1,6 @@
 {
   "name": "tsl-site",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "bin": {
     "tsl-site": "bin/app.ts"
   },
@@ -9,6 +9,7 @@
     "cdk": "cdk",
     "cleanup": "@powershell -NoProfile -ExecutionPolicy Unrestricted -Command ./cleanUp.ps1",
     "deploy": "tsc && jest -- stack.test.ts && cdk synth && cdk deploy --require-approval never && npm run cleanup",
+    "sandbox": "jest -- test/sandbox",
     "test": "jest"
   },
   "repository": {
@@ -19,19 +20,22 @@
     "@types/aws-lambda": "^8.0.0",
     "@types/jest": "^29.0.0",
     "@types/node": "^20.0.0",
+    "@types/uuid": "^10.0.0",
     "aws-cdk": "^2.0.0",
     "aws-cdk-lib": "^2.0.0",
     "constructs": "^10.0.0",
-    "esbuild": "^0.20.0",
+    "esbuild": "^0.23.0",
     "jest": "^29.0.0",
     "ts-jest": "^29.0.0",
     "ts-node": "^10.0.0",
-    "typescript": "~5.4.0"
+    "typescript": "~5.5.0"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/client-s3": "^3.0.0",
     "@aws-sdk/util-dynamodb": "^3.0.0",
     "axios": "^1.0.0",
+    "uuid": "^10.0.0",
     "zod": "^3.0.0"
   }
 }
