@@ -8,12 +8,15 @@ const ManaCost = (props: ManaCostProps) => {
   const manaSymbols = props.manaCost.split(/{|}/).filter((symbol) => symbol.length > 0);
   return (
     <div>
-      {manaSymbols.map((symbol) => (
-        <i
-        className={`ms ms-${symbol.toLowerCase()} ms-cost ms-shadow`}
-        key={`${symbol}-${v4()}`}
-        / >
-      ))}
+      {manaSymbols.map((symbol) => {
+        if (symbol.length > 1) symbol = symbol.split(/\W/).join('')
+        return (
+          <i
+            className={`ms ms-${symbol.toLowerCase()} ms-cost ms-shadow`}
+            key={`${symbol}-${v4()}`}
+          />
+        );
+      })}
     </div>
   );
 }
