@@ -19,7 +19,7 @@ export const AppContext = createContext({
 const App = () => {
   const [league, setLeague] = useState({} as League);
   const [session, setSession] = useState({} as Session);
-  const sessionKey = localStorage.getItem(config.localStorageKey);
+  const sessionKey = localStorage.getItem(config.sessionIdLocalStorageKey);
 
   useEffect(() => {
     const getActiveLeague = async () => {

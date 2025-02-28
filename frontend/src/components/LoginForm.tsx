@@ -33,7 +33,7 @@ const LoginForm = () => {
       if (response?.password === password) {
         const session = getSessionValues(username);
         await api.createSession(session);
-        localStorage.setItem(config.localStorageKey, session.sessionid);
+        localStorage.setItem(config.sessionIdLocalStorageKey, session.sessionid);
         setSession(session);
         navigate('/');
       } else {

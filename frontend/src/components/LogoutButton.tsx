@@ -12,7 +12,7 @@ const LogoutButton = () => {
   const handleLogoutButtonClick = () => {
     setIsLoading(true);
     try {
-      localStorage.removeItem(config.localStorageKey);
+      localStorage.removeItem(config.sessionIdLocalStorageKey);
       setSession({});
       navigate('/');
     } catch (e) {

@@ -37,7 +37,7 @@ export class LambdaFunction extends NodejsFunction {
       memorySize: 128,
       retryAttempts: 0,
       role: props.role,
-      runtime: Runtime.NODEJS_20_X,
+      runtime: Runtime.NODEJS_22_X,
       timeout: props.timeout || Duration.seconds(10),
     });
   }

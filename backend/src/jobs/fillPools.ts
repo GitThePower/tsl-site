@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { z } from 'zod';
 import { listItems } from '../utils/ddb';
 import {
@@ -17,11 +16,11 @@ export const getMoxfieldContent = async (url: string): Promise<MoxfieldContent> 
   let content: MoxfieldContent;
   try {
     const id = url.split('/')[4];
-    const result = await axios.get(`https://api2.moxfield.com/v3/decks/all/${id}`);
-    if (result.status !== 200) {
+    const result = await fetch(`https://api2.moxfield.com/v3/decks/all/${id}`);
+    if (!result.ok) {
       throw new Error('Request to Get decklist from Moxfield failed');
     }
-    content = MoxfieldContentSchema.parse(result.data);
+    content = MoxfieldContentSchema.parse(await result.json());
   } catch (e) {
     throw new Error(JSON.stringify(e));
   }
