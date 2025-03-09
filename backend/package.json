@@ -1,6 +1,6 @@
 {
   "name": "tsl-site",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "bin": {
     "tsl-site": "bin/app.ts"
   },
@@ -28,7 +28,7 @@
     "jest": "^29.0.0",
     "ts-jest": "^29.0.0",
     "ts-node": "^10.0.0",
-    "typescript": "~5.5.0"
+    "typescript": "~5.8.0"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.0.0",

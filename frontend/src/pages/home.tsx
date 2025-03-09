@@ -9,9 +9,9 @@ import conditions from '../actions/conditions.ts';
 import { AppContext } from '../App.tsx';
 import CardPool from '../components/CardPool';
 import Header from '../components/Header.tsx';
+import Decklists from '../components/Decklists';
 import LoginPageButton from '../components/LoginPageButton.tsx';
 import ProfileButton from '../components/ProfileButton.tsx';
-import StandingsTable from '../components/StandingsTable';
 import { User } from '../../../backend/src/types';
 
 const Home = () => {
@@ -49,9 +49,7 @@ const Home = () => {
             scrollButtons='auto'
           >
             <Tab label='Pool' />
-            {conditions.sessionIsActive(session) && (
-              <Tab label='Standings' />
-            )}
+            <Tab label='Decklists' />
             {conditions.sessionIsActive(session) && (
               <Tab label='Reporting' />
             )}
@@ -60,7 +58,7 @@ const Home = () => {
             <CardPool />
           )}
           {tabValue === 1 && (
-            <StandingsTable users={users} />
+            <Decklists users={users} />
           )}
           {tabValue === 2 && (
             <Box>TBD</Box>

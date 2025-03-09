@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import { CloudFrontTarget } from 'aws-cdk-lib/aws-route53-targets';
@@ -12,11 +13,10 @@ import config from '../config';
 export default class Website {
 
   public bucket: s3.IBucket;
-  public cfnDistribution: cloudfront.CfnDistribution;
-  public cloudFrontDistribution: cloudfront.CloudFrontWebDistribution;
+  public cloudFrontDistribution: cloudfront.Distribution;
   public hostedZone: route53.IHostedZone;
   public httpsCertificate: acm.ICertificate;
-  public oac: cloudfront.CfnOriginAccessControl;
+  public oac: cloudfront.IOriginAccessControl;
 
   constructor(scope: Construct, id: string) {
     this.bucket = new s3.Bucket(scope, `${id}-bucket`, {
@@ -36,37 +36,28 @@ export default class Website {
       validation: acm.CertificateValidation.fromDns(this.hostedZone),
       certificateName: `${id}-cert`,
     });
-    this.oac = new cloudfront.CfnOriginAccessControl(scope, `${id}-oac`, {
-      originAccessControlConfig: {
-        name: `Blogcloudfront.CfnOriginAccessControl`,
-        originAccessControlOriginType: 's3',
-        signingBehavior: 'always',
-        signingProtocol: 'sigv4',
+    this.oac = new cloudfront.S3OriginAccessControl(scope, `${id}-oac`, {
+      originAccessControlName: `${id}-oac`,
+      signing: cloudfront.Signing.SIGV4_ALWAYS,
+    });
+    this.cloudFrontDistribution = new cloudfront.Distribution(scope, `${id}-dist`, {
+      defaultBehavior: {
+        origin: origins.S3BucketOrigin.withOriginAccessControl(this.bucket, {
+          originAccessControl: this.oac
+        }
+      ),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
       },
-    });
-    this.cloudFrontDistribution = new cloudfront.CloudFrontWebDistribution(scope, `${id}-dist`, {
+      certificate: this.httpsCertificate,
       defaultRootObject: 'index.html',
-      viewerCertificate: cloudfront.ViewerCertificate.fromAcmCertificate(this.httpsCertificate, {
-        aliases: [config.domainName, config.domainNameWww],
-      }),
-      originConfigs: [{
-        s3OriginSource: {
-          s3BucketSource: this.bucket,
-        },
-        behaviors: [{
-          isDefaultBehavior: true,
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        }],
-      }],
-      errorConfigurations: [{
-        errorCode: 403,
+      domainNames: [config.domainName, config.domainNameWww],
+      errorResponses: [{
+        httpStatus: 403,
+        responseHttpStatus: 200,
         responsePagePath: '/index.html',
-        responseCode: 200,
-        errorCachingMinTtl: 60,
+        ttl: cdk.Duration.seconds(60),
       }],
     });
-    this.cfnDistribution = this.cloudFrontDistribution.node.defaultChild as cloudfront.CfnDistribution;
-    this.cfnDistribution.addPropertyOverride('DistributionConfig.Origins.0.OriginAccessControlId', this.oac.getAtt('Id'));
     this.bucket.addToResourcePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
