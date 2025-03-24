@@ -2,6 +2,7 @@ import { createContext, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import api from './actions/api';
 import conditions from './actions/conditions';
+import localStorageHelpers from './actions/localStorageHelpers';
 import Home from './pages/home';
 import Login from './pages/login';
 import NotFound from './pages/not-found';
@@ -23,8 +24,10 @@ const App = () => {
 
   useEffect(() => {
     const getActiveLeague = async () => {
-      const leagues = await api.listLeagues();
-      const activeLeague = leagues.filter((league) => league.isActive === true)[0];
+      let activeLeague: League | undefined = localStorageHelpers.getLeagueFromLocalStorage();
+      if (!activeLeague) {
+        activeLeague = await localStorageHelpers.setLeagueInLocalStorage();
+      }
       setLeague(activeLeague);
     };
     const getSessionFromSessionKey = async () => {
