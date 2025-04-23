@@ -8,15 +8,12 @@ import { Construct } from 'constructs';
 import config from '../config';
 
 interface ApiProps {
-  apiKeyValue: string;
+  apiKeyValues: string[];
   domainCert: ICertificate;
   domainHostedZone: IHostedZone;
 }
 
 export class Api extends RestApi {
-
-  public apiKey: IApiKey;
-  public usagePlan: IUsagePlan;
 
   constructor(scope: Construct, id: string, props: ApiProps) {
     super(scope, id, {
@@ -51,7 +48,7 @@ export class Api extends RestApi {
       zone: props.domainHostedZone,
     });
 
-    this.usagePlan = this.addUsagePlan(`${id}-api-usage-plan`, {
+    const usagePlan = this.addUsagePlan(`${id}-api-usage-plan`, {
       apiStages: [
         {
           stage: this.deploymentStage,
@@ -66,11 +63,15 @@ export class Api extends RestApi {
         rateLimit: 10,
       },
     });
-    this.apiKey = this.addApiKey(`${id}-api-key`, {
-      apiKeyName: `${id}-api-key`,
-      value: props.apiKeyValue,
+
+    props.apiKeyValues.forEach((apiKeyValue, idx) => {
+      const apiKeyName = `${id}-api-key-${idx}`;
+      const apiKey = this.addApiKey(apiKeyName, {
+        apiKeyName,
+        value: apiKeyValue,
+      });
+      usagePlan.addApiKey(apiKey);
     });
-    this.usagePlan.addApiKey(this.apiKey);
   }
 
   createLambdaBackedResource(resourceName: string, lambda: IFunction): IResource {

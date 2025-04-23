@@ -1,9 +1,29 @@
 # tsl-site
 
-You should explore the contents of this project. It demonstrates a CDK app with an instance of a stack (`TslDotComStack`)
-which contains an Amazon SQS queue that is subscribed to an Amazon SNS topic.
+## Administration
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+Make sure you have an API key. Set the following header on each request you make:
+```
+{
+    "X-Api-Key": "YOUR_API_KEY_HERE" 
+}
+```
+
+### Add User
+
+Make the following request a POST request to https://api.tavernsealedleague.com/user with the following body:
+```
+{
+    "leagues": [
+        {
+            "decklistUrl": "DECKLIST URL (e.g. https://moxfield.com/decks/*******)",
+            "leaguename": "NAME OF THE ACTIVE LEAGUE"
+        }
+    ],
+    "password": "PASSWORD_FOR_NEW_USER",
+    "username": "DISPLAY_NAME_FOR_NEW_USER"
+}
+```
 
 ## Useful commands
 

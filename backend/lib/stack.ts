@@ -11,7 +11,7 @@ import Website from './website';
 import { ResourceLambdaEnv, FillPoolsLambdaEnv } from '../src/types';
 
 interface TslDotComStackProps extends StackProps {
-  apiKeyValue: string;
+  apiKeyValues: string[];
 }
 
 export class TslDotComStack extends Stack {
@@ -21,7 +21,7 @@ export class TslDotComStack extends Stack {
     const website = new Website(this, `${id}-site`);
 
     const restApi = new Api(this, `${id}-api`, {
-      apiKeyValue: props.apiKeyValue,
+      apiKeyValues: props.apiKeyValues,
       domainCert: website.httpsCertificate,
       domainHostedZone: website.hostedZone,
     });
