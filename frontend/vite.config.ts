@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/proxy': {
-        target: 'https://api.tavernsealedleague.com',
+        target: 'https://api.tslsite.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/proxy/, '') // Remove the '/proxy' prefix
       },

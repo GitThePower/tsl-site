@@ -1,6 +1,6 @@
 {
-  "hosted-zone:account=764593298797:domainName=tavernsealedleague.com:region=us-east-1": {
-    "Id": "/hostedzone/Z014560035OO0WEPYIUK4",
-    "Name": "tavernsealedleague.com."
+  "hosted-zone:account=764593298797:domainName=tslsite.com:region=us-east-1": {
+    "Id": "/hostedzone/Z02990282NHPWZCJK6GIA",
+    "Name": "tslsite.com."
   }
 }

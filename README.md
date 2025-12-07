@@ -11,7 +11,7 @@ Make sure you have an API key. Set the following header on each request you make
 
 ### Add User
 
-Make the following request a POST request to https://api.tavernsealedleague.com/user with the following body:
+Make the following request a POST request to https://api.tslsite.com/user with the following body:
 ```
 {
     "leagues": [
