@@ -1,4 +1,4 @@
-const domainName = 'tavernsealedleague.com';
+const domainName = 'tslsite.com';
 
 export default {
   domainName,
