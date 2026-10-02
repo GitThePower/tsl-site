@@ -1,6 +1,8 @@
 import { Duration, Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
+import * as path from 'path';
 import { Api } from './api';
 import config from './config';
 import { DynamoDBTable } from './dynamodb';
@@ -39,7 +41,7 @@ export class TslDotComStack extends Stack {
       };
       const lambdaRole = new LambdaRole(this, `${id}-${resource}-role`);
       const lambda = new LambdaFunction(this, `${id}-${resource}-accessor`, {
-        entry: `src/resources/${resource}.ts`,
+        entry: path.join(__dirname, '..', 'src', 'resources', `${resource}.ts`),
         environment: lambdaEnv,
         role: lambdaRole,
       });
@@ -62,21 +64,29 @@ export class TslDotComStack extends Stack {
 
     const userResource = createRestfulResource(config.resource_user, config.resource_user_pk, {});
 
+    const gatewaySecret = new Secret(this, `${id}-gateway-secret`, {
+      secretName: config.gateway_secret_name,
+    });
+
     const fillPoolsLambdaEnv: FillPoolsLambdaEnv = {
       LEAGUE_BUCKET_NAME: leagueDataBucket.bucketName,
       LEAGUE_TABLE_NAME: leagueResource.table.tableName,
       USER_TABLE_NAME: userResource.table.tableName,
+      GATEWAY_SECRET_NAME: config.gateway_secret_name,
+      GATEWAY_PROVIDER: 'scraperapi',
+      REQUEST_DELAY_MS: '2500',
     };
     const fillPoolsLambdaRole = new LambdaRole(this, `${id}-${config.job_fillPools}-role`);
     const fillPoolsLambda = new LambdaFunction(this, `${id}-${config.job_fillPools}-executor`, {
-      entry: `src/jobs/${config.job_fillPools}.ts`,
+      entry: path.join(__dirname, '..', 'src', 'jobs', `${config.job_fillPools}.ts`),
       environment: fillPoolsLambdaEnv,
       role: fillPoolsLambdaRole,
-      timeout: Duration.minutes(1),
+      timeout: Duration.minutes(5),
     });
     leagueDataBucket.grantPut(fillPoolsLambdaRole);
     leagueResource.table.grantReadData(fillPoolsLambdaRole);
     userResource.table.grantReadData(fillPoolsLambdaRole);
+    gatewaySecret.grantRead(fillPoolsLambdaRole);
 
     new CronJob(this, `${id}-${config.job_fillPools}-schedule`, {
       cronOps: {

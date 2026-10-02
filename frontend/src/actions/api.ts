@@ -7,7 +7,7 @@ const baseUrl = (process.env.NODE_ENV && process.env.NODE_ENV === 'dev') ?
   `https://${backendConfig.domainNameApi}`;
 
 const sharedHeaders = {
-  'X-Api-Key': config.apiKeyValues[0],
+  'X-Api-Key': config.apiKeyValues[1] || config.apiKeyValues[0],
 };
 
 const getUser = async (username: string): Promise<User> => {

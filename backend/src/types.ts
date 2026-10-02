@@ -54,6 +54,9 @@ export const FillPoolsLambdaEnvSchema = z.object({
   LEAGUE_BUCKET_NAME: z.string(),
   LEAGUE_TABLE_NAME: z.string(),
   USER_TABLE_NAME: z.string(),
+  GATEWAY_SECRET_NAME: z.string().optional(),
+  GATEWAY_PROVIDER: z.enum(['scraperapi', 'scrapingbee']).optional(),
+  REQUEST_DELAY_MS: z.string().optional(),
 });
 export type FillPoolsLambdaEnv = z.infer<typeof FillPoolsLambdaEnvSchema>;
 

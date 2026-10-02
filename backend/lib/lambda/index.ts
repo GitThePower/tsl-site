@@ -29,7 +29,6 @@ export class LambdaFunction extends NodejsFunction {
   constructor(scope: Construct, id: string, props: LambdaFunctionProps) {
     super(scope, id, {
       architecture: Architecture.ARM_64,
-      depsLockFilePath: 'package-lock.json',
       entry: props.entry,
       environment: props.environment,
       functionName: id,

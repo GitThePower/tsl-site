@@ -11,4 +11,5 @@ export default {
   resource_session_pk: 'sessionid',
   resource_user: 'user',
   resource_user_pk: 'username',
+  gateway_secret_name: 'tsl/moxfield-gateway-api-key',
 }

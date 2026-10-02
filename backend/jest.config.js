@@ -6,6 +6,7 @@ module.exports = {
   ],
   testEnvironment: 'node',
   roots: ['<rootDir>/test'],
+  setupFilesAfterEnv: ['aws-cdk-lib/testhelpers/jest-autoclean'],
   testMatch: ['**/*.test.ts'],
   transform: {
     '^.+\\.tsx?$': 'ts-jest'

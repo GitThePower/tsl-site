@@ -21,7 +21,7 @@
     "@types/jest": "^29.0.0",
     "@types/node": "^22.0.0",
     "@types/uuid": "^10.0.0",
-    "aws-cdk": "^2.1118.2",
+    "aws-cdk": "^2.1144.0",
     "aws-cdk-lib": "^2.0.0",
     "constructs": "^10.0.0",
     "esbuild": "^0.25.0",

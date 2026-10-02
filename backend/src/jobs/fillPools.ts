@@ -11,21 +11,74 @@ import {
   UserSchema,
 } from '../../src/types';
 import { putObject } from '../utils/s3';
+import { getSecretValue } from '../utils/secrets';
 
-export const getMoxfieldContent = async (url: string): Promise<MoxfieldContent> => {
-  let content: MoxfieldContent;
-  try {
-    const id = url.split('/')[4];
-    const result = await fetch(`https://api2.moxfield.com/v3/decks/all/${id}`);
-    if (!result.ok) {
-      throw new Error('Request to Get decklist from Moxfield failed');
-    }
-    content = MoxfieldContentSchema.parse(await result.json());
-  } catch (e) {
-    throw new Error(JSON.stringify(e));
+export const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+export interface FetchMoxfieldOptions {
+  apiKey?: string;
+  provider?: 'scraperapi' | 'scrapingbee';
+  maxRetries?: number;
+  retryDelayMs?: number;
+}
+
+export const buildGatewayUrl = (targetUrl: string, apiKey: string, provider: 'scraperapi' | 'scrapingbee' = 'scraperapi'): string => {
+  if (provider === 'scrapingbee') {
+    return `https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&render_js=false`;
+  }
+  return `https://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+};
+
+export const getMoxfieldContent = async (url: string, options?: FetchMoxfieldOptions): Promise<MoxfieldContent> => {
+  const id = url.split('/')[4];
+  const targetUrl = `https://api2.moxfield.com/v3/decks/all/${id}`;
+
+  const apiKey = options?.apiKey ?? process.env.SCRAPING_GATEWAY_API_KEY;
+  const provider = options?.provider ?? (process.env.GATEWAY_PROVIDER as 'scraperapi' | 'scrapingbee') ?? 'scraperapi';
+
+  let fetchUrl = targetUrl;
+  const headers: Record<string, string> = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Referer': 'https://www.moxfield.com/',
+    'Origin': 'https://www.moxfield.com',
+    'Accept': 'application/json, text/plain, */*',
+  };
+
+  if (apiKey) {
+    fetchUrl = buildGatewayUrl(targetUrl, apiKey, provider);
   }
 
-  return content;
+  const maxRetries = options?.maxRetries ?? 3;
+  const baseRetryDelay = options?.retryDelayMs ?? 3000;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await fetch(fetchUrl, { headers });
+      if (result.status === 429) {
+        const errText = await result.text().catch(() => '');
+        if (attempt < maxRetries) {
+          const delay = baseRetryDelay * attempt;
+          console.warn(`[429 Rate Limited] Attempt ${attempt}/${maxRetries} for ${url}. Backing off for ${delay}ms before retrying. Gateway message: ${errText.slice(0, 150)}`);
+          await sleep(delay);
+          continue;
+        }
+        throw new Error(`Request to Get decklist from Moxfield failed with status 429: ${errText.slice(0, 200)}`);
+      }
+      if (!result.ok) {
+        const errText = await result.text().catch(() => '');
+        throw new Error(`Request to Get decklist from Moxfield failed with status ${result.status}: ${errText.slice(0, 200)}`);
+      }
+      return MoxfieldContentSchema.parse(await result.json());
+    } catch (e) {
+      if (attempt >= maxRetries) {
+        throw new Error(e instanceof Error ? e.message : JSON.stringify(e));
+      }
+      console.warn(`Fetch error on attempt ${attempt}/${maxRetries} for ${url}: ${e instanceof Error ? e.message : e}. Retrying...`);
+      await sleep(baseRetryDelay);
+    }
+  }
+
+  throw new Error(`Failed to retrieve Moxfield content for ${url} after ${maxRetries} attempts`);
 };
 
 const formatCardPool = (leaguePool: MoxfieldPool): Record<string, MagicCardPool> => {
@@ -70,7 +123,25 @@ const formatCardPool = (leaguePool: MoxfieldPool): Record<string, MagicCardPool>
 
 export const handler = async (): Promise<void> => {
   const jobStartTime = Date.now();
-  const { LEAGUE_BUCKET_NAME, LEAGUE_TABLE_NAME, USER_TABLE_NAME } = FillPoolsLambdaEnvSchema.parse(process.env);
+  const DEFAULT_STAGGER_INTERVAL_MS = 2500;
+  const {
+    LEAGUE_BUCKET_NAME,
+    LEAGUE_TABLE_NAME,
+    USER_TABLE_NAME,
+    GATEWAY_SECRET_NAME,
+    GATEWAY_PROVIDER,
+    REQUEST_DELAY_MS,
+  } = FillPoolsLambdaEnvSchema.parse(process.env);
+  const staggerIntervalMs = REQUEST_DELAY_MS ? parseInt(REQUEST_DELAY_MS, 10) : DEFAULT_STAGGER_INTERVAL_MS;
+
+  let apiKey = process.env.SCRAPING_GATEWAY_API_KEY;
+  if (!apiKey && GATEWAY_SECRET_NAME) {
+    try {
+      apiKey = await getSecretValue(GATEWAY_SECRET_NAME);
+    } catch (e) {
+      console.warn(`Could not load gateway secret ${GATEWAY_SECRET_NAME}: ${e instanceof Error ? e.message : e}`);
+    }
+  }
 
   const leagueTableScanStartTime = Date.now();
   const allLeagues = await listItems(LEAGUE_TABLE_NAME);
@@ -86,26 +157,32 @@ export const handler = async (): Promise<void> => {
   const validatedUsers = z.array(UserSchema).parse(usersList.Items);
 
   const fillPoolsStartTime = Date.now();
-  const fillPoolsPromises = activeLeagues.map(async (activeLeague) => {
+  for (const activeLeague of activeLeagues) {
     const leaguePool: MoxfieldPool = {};
-    const assemblePoolPromises = validatedUsers.map(async (user) => {
+    for (const user of validatedUsers) {
       const username = user.username ?? '';
       const userLeagues = user.leagues;
       const filteredUserLeagues = userLeagues?.filter((league) => league.leaguename === activeLeague.leaguename);
       if (filteredUserLeagues && filteredUserLeagues.length > 0) {
         const decklistUrl = filteredUserLeagues[0].decklistUrl;
+        console.log(`Fetching decklist for ${username} in ${activeLeague.leaguename}: ${decklistUrl}`);
         try {
-          const userContent = await getMoxfieldContent(decklistUrl);
+          const userContent = await getMoxfieldContent(decklistUrl, { apiKey, provider: GATEWAY_PROVIDER });
           leaguePool[username] = {
             decklistUrl,
             moxfieldContent: userContent
           };
+          console.log(`Successfully fetched decklist for ${username}`);
         } catch (e) {
-          console.error(`Failed to get Moxfield content for ${username}: ${JSON.stringify(e)}`);
+          console.error(`Failed to get Moxfield content for ${username}: ${e instanceof Error ? e.message : JSON.stringify(e)}`);
+        }
+
+        // Stutter each request by a configurable interval to avoid exceeding gateway concurrency limits
+        if (staggerIntervalMs > 0) {
+          await sleep(staggerIntervalMs);
         }
       }
-    });
-    await Promise.all(assemblePoolPromises);
+    }
 
     const cardPool = formatCardPool(leaguePool);
     const s3Input = {
@@ -119,8 +196,7 @@ export const handler = async (): Promise<void> => {
     } catch (e) {
       console.error(`Failed to update pool for ${activeLeague.leaguename}: ${e}`);
     }
-  });
-  await Promise.all(fillPoolsPromises);
+  }
   const fillPoolsDuration = Date.now() - fillPoolsStartTime;
   
   const jobDuration = Date.now() - jobStartTime;
