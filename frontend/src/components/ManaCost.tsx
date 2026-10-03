@@ -5,10 +5,15 @@ interface ManaCostProps {
 }
 
 const ManaCost = (props: ManaCostProps) => {
-  const manaSymbols = props.manaCost.split(/{|}/).filter((symbol) => symbol.length > 0);
+  const manaSymbols = (props.manaCost || '').split(/{|}/).filter((symbol) => symbol.trim().length > 0);
   return (
     <div>
       {manaSymbols.map((symbol) => {
+        if (symbol.trim() === '//') {
+          return (
+            <span key={`${symbol}-${v4()}`}>{' // '}</span>
+          );
+        }
         if (symbol.length > 1) symbol = symbol.split(/\W/).join('')
         return (
           <i
