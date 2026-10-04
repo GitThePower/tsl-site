@@ -7,9 +7,10 @@ import { ChangeEvent, useContext, useEffect, useState } from 'react';
 import api from '../actions/api';
 import conditions from '../actions/conditions.ts';
 import { AppContext } from '../App.tsx';
+import CardCounts from '../components/CardCounts';
 import CardPool from '../components/CardPool';
-import Header from '../components/Header.tsx';
 import Decklists from '../components/Decklists';
+import Header from '../components/Header.tsx';
 import LoginPageButton from '../components/LoginPageButton.tsx';
 import ProfileButton from '../components/ProfileButton.tsx';
 import { User } from '../../../backend/src/types';
@@ -50,6 +51,7 @@ const Home = () => {
           >
             <Tab label='Pool' />
             <Tab label='Decklists' />
+            <Tab label='Card Counts' />
             {conditions.sessionIsActive(session) && (
               <Tab label='Reporting' />
             )}
@@ -61,6 +63,9 @@ const Home = () => {
             <Decklists users={users} />
           )}
           {tabValue === 2 && (
+            <CardCounts />
+          )}
+          {tabValue === 3 && (
             <Box>TBD</Box>
           )}
         </Box>

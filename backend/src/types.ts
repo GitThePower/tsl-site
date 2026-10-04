@@ -8,6 +8,9 @@ const MagicCardSchema = z.object({
 });
 export type MagicCard = z.infer<typeof MagicCardSchema>;
 
+export const MagicCardCountsSchema = z.record(z.string(), MagicCardSchema);
+export type MagicCardCounts = z.infer<typeof MagicCardCountsSchema>;
+
 export const MagicCardPoolSchema = z.object({
   cardList: z.record(z.string(), MagicCardSchema),
   decklistUrl: z.string(),
@@ -65,10 +68,12 @@ export type FillPoolsLambdaEnv = z.infer<typeof FillPoolsLambdaEnvSchema>;
 // ######################################
 
 export const LeagueSchema = z.object({
-  leaguename: z.string(),
+  cardCounts: MagicCardCountsSchema,
+  cardCountsKey: z.string(),
   cardPool: z.record(z.string(), MagicCardPoolSchema),
   cardPoolKey: z.string(),
   isActive: z.boolean(),
+  leaguename: z.string(),
 })
   .partial()
   .refine(

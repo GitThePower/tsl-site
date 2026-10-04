@@ -4,6 +4,7 @@ import {
   FillPoolsLambdaEnvSchema,
   LeagueSchema,
   MagicCard,
+  MagicCardCounts,
   MagicCardPool,
   MoxfieldContent,
   MoxfieldContentSchema,
@@ -81,7 +82,7 @@ export const getMoxfieldContent = async (url: string, options?: FetchMoxfieldOpt
   throw new Error(`Failed to retrieve Moxfield content for ${url} after ${maxRetries} attempts`);
 };
 
-const formatCardPool = (leaguePool: MoxfieldPool): Record<string, MagicCardPool> => {
+export const formatCardPool = (leaguePool: MoxfieldPool): Record<string, MagicCardPool> => {
   const searchResults: Record<string, MagicCardPool> = {};
   Object.keys(leaguePool).forEach((username) => {
     searchResults[username] = {} as MagicCardPool;
@@ -90,17 +91,17 @@ const formatCardPool = (leaguePool: MoxfieldPool): Record<string, MagicCardPool>
     Object.values(leaguePool[username].moxfieldContent.boards).forEach((board) => {
       Object.values(board.cards).forEach((card) => {
         const cardName = card.card.name;
-        if (['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'].includes(cardName)) {
+        if (['Forest', 'Island', 'Mountain', 'Plains', 'Swamp'].includes(cardName)) {
           // Do not add basics to the pool
         } else if (cardName in userCardList) {
           userCardList[cardName].quantity += card.quantity;
         } else {
           userCardList[cardName] = {
+            mana_cost: card.card.mana_cost,
             name: cardName,
             quantity: card.quantity,
-            mana_cost: card.card.mana_cost,
             scryfall_id: card.card?.scryfall_id,
-          }
+          };
         }
       });
     });
@@ -118,6 +119,31 @@ const formatCardPool = (leaguePool: MoxfieldPool): Record<string, MagicCardPool>
       return sorted;
     },
     {} as Record<string, MagicCardPool>,
+  );
+};
+
+export const formatCardCounts = (cardPool: Record<string, MagicCardPool>): MagicCardCounts => {
+  const cardCounts: Record<string, MagicCard> = {};
+  Object.values(cardPool).forEach((userPool) => {
+    Object.values(userPool.cardList).forEach((card) => {
+      if (card.name in cardCounts) {
+        cardCounts[card.name].quantity += card.quantity;
+      } else {
+        cardCounts[card.name] = {
+          mana_cost: card.mana_cost,
+          name: card.name,
+          quantity: card.quantity,
+          scryfall_id: card.scryfall_id,
+        };
+      }
+    });
+  });
+  return Object.keys(cardCounts).sort().reduce(
+    (sorted, key) => {
+      sorted[key] = cardCounts[key];
+      return sorted;
+    },
+    {} as MagicCardCounts,
   );
 };
 
@@ -195,6 +221,21 @@ export const handler = async (): Promise<void> => {
       console.log(`Successfully updated pool for ${activeLeague.leaguename}!`);
     } catch (e) {
       console.error(`Failed to update pool for ${activeLeague.leaguename}: ${e}`);
+    }
+
+    if (activeLeague.cardCountsKey) {
+      const cardCounts = formatCardCounts(cardPool);
+      const s3CountsInput = {
+        Body: JSON.stringify(cardCounts),
+        Bucket: LEAGUE_BUCKET_NAME,
+        Key: activeLeague.cardCountsKey,
+      };
+      try {
+        await putObject(s3CountsInput);
+        console.log(`Successfully updated card counts for ${activeLeague.leaguename}!`);
+      } catch (e) {
+        console.error(`Failed to update card counts for ${activeLeague.leaguename}: ${e}`);
+      }
     }
   }
   const fillPoolsDuration = Date.now() - fillPoolsStartTime;
