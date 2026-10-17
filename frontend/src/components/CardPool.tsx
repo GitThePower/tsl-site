@@ -3,6 +3,7 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
+  Alert,
   Box,
   Button,
   Dialog,
@@ -59,6 +60,11 @@ const CardPool = () => {
 
   return (
     <Box sx={{ width: '100%', overflowY: 'auto' }}>
+      {league.poolSyncError && (
+        <Alert severity='warning' sx={{ mb: 2 }}>
+          Some or all card pools failed to sync during the latest update. Displayed data may be incomplete or out of date.
+        </Alert>
+      )}
       <Accordion>
         <AccordionSummary expandIcon={<ExpandMore />}>
           <Typography sx={{ fontWeight: 'bold' }}>
@@ -70,7 +76,7 @@ const CardPool = () => {
             <li>Type the name of the card you are looking for in the search box</li>
             <li>Cards matching your search will appear under the name of the user who owns them</li>
             <li>Basic lands are not included in the pool</li>
-            <li>Pool is updated automatically at ~8pm EST every night</li>
+            <li>Pool is updated automatically at ~8pm EST on Sunday, Monday, Wednesday, and Friday nights</li>
             <li>Users are added manually. Message me if you don't see your pool listed and want to be added</li>
           </ul>
         </AccordionDetails>

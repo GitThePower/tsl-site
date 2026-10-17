@@ -69,12 +69,12 @@ export class TslDotComStack extends Stack {
     });
 
     const fillPoolsLambdaEnv: FillPoolsLambdaEnv = {
+      GATEWAY_PROVIDER: 'scraperapi',
+      GATEWAY_SECRET_NAME: config.gateway_secret_name,
       LEAGUE_BUCKET_NAME: leagueDataBucket.bucketName,
       LEAGUE_TABLE_NAME: leagueResource.table.tableName,
-      USER_TABLE_NAME: userResource.table.tableName,
-      GATEWAY_SECRET_NAME: config.gateway_secret_name,
-      GATEWAY_PROVIDER: 'scraperapi',
       REQUEST_DELAY_MS: '2500',
+      USER_TABLE_NAME: userResource.table.tableName,
     };
     const fillPoolsLambdaRole = new LambdaRole(this, `${id}-${config.job_fillPools}-role`);
     const fillPoolsLambda = new LambdaFunction(this, `${id}-${config.job_fillPools}-executor`, {
@@ -84,7 +84,7 @@ export class TslDotComStack extends Stack {
       timeout: Duration.minutes(5),
     });
     leagueDataBucket.grantPut(fillPoolsLambdaRole);
-    leagueResource.table.grantReadData(fillPoolsLambdaRole);
+    leagueResource.table.grantReadWriteData(fillPoolsLambdaRole);
     userResource.table.grantReadData(fillPoolsLambdaRole);
     gatewaySecret.grantRead(fillPoolsLambdaRole);
 
@@ -92,6 +92,7 @@ export class TslDotComStack extends Stack {
       cronOps: {
         hour: '0',
         minute: '0',
+        weekDay: 'SUN,MON,WED,FRI',
       },
       lambda: fillPoolsLambda,
     });

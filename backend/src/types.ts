@@ -53,13 +53,21 @@ export const ResourceLambdaEnvSchema = z.object({
 });
 export type ResourceLambdaEnv = z.infer<typeof ResourceLambdaEnvSchema>;
 
+export const GatewayProviderSchema = z.enum([
+  'scrapedo',
+  'scraperapi',
+  'scrapingant',
+  'scrapingbee',
+]);
+export type GatewayProvider = z.infer<typeof GatewayProviderSchema>;
+
 export const FillPoolsLambdaEnvSchema = z.object({
+  GATEWAY_PROVIDER: GatewayProviderSchema.optional(),
+  GATEWAY_SECRET_NAME: z.string().optional(),
   LEAGUE_BUCKET_NAME: z.string(),
   LEAGUE_TABLE_NAME: z.string(),
-  USER_TABLE_NAME: z.string(),
-  GATEWAY_SECRET_NAME: z.string().optional(),
-  GATEWAY_PROVIDER: z.enum(['scraperapi', 'scrapingbee']).optional(),
   REQUEST_DELAY_MS: z.string().optional(),
+  USER_TABLE_NAME: z.string(),
 });
 export type FillPoolsLambdaEnv = z.infer<typeof FillPoolsLambdaEnvSchema>;
 
@@ -74,6 +82,7 @@ export const LeagueSchema = z.object({
   cardPoolKey: z.string(),
   isActive: z.boolean(),
   leaguename: z.string(),
+  poolSyncError: z.boolean(),
 })
   .partial()
   .refine(

@@ -3,6 +3,7 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
+  Alert,
   Box,
   Button,
   Dialog,
@@ -46,6 +47,11 @@ const CardCounts = () => {
 
   return (
     <Box sx={{ overflowY: 'auto', width: '100%' }}>
+      {league.poolSyncError && (
+        <Alert severity='warning' sx={{ mb: 2 }}>
+          Some or all card pools failed to sync during the latest update. Displayed data may be incomplete or out of date.
+        </Alert>
+      )}
       <Accordion>
         <AccordionSummary expandIcon={<ExpandMore />}>
           <Typography sx={{ fontWeight: 'bold' }}>
@@ -57,7 +63,7 @@ const CardCounts = () => {
             <li>Type the name of the card you are looking for in the search box</li>
             <li>Displays the total count of each card across all players in the league</li>
             <li>Basic lands are not included in the counts</li>
-            <li>Counts are updated automatically alongside the card pool at ~8pm EST every night</li>
+            <li>Counts are updated automatically alongside the card pool at ~8pm EST on Sunday, Monday, Wednesday, and Friday nights</li>
           </ul>
         </AccordionDetails>
       </Accordion>
