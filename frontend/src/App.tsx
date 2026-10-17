@@ -11,6 +11,7 @@ import { League, Session } from '../../backend/src/types';
 import { config } from '../../local-config';
 
 export const AppContext = createContext({
+  isLeagueLoading: true,
   league: {} as League,
   session: {} as Session,
   setLeague: {} as React.Dispatch<React.SetStateAction<League>>,
@@ -18,17 +19,22 @@ export const AppContext = createContext({
 });
 
 const App = () => {
+  const [isLeagueLoading, setIsLeagueLoading] = useState(true);
   const [league, setLeague] = useState({} as League);
   const [session, setSession] = useState({} as Session);
   const sessionKey = localStorage.getItem(config.sessionIdLocalStorageKey);
 
   useEffect(() => {
     const getActiveLeague = async () => {
-      let activeLeague: League | undefined = localStorageHelpers.getLeagueFromLocalStorage();
-      if (!activeLeague) {
-        activeLeague = await localStorageHelpers.setLeagueInLocalStorage();
+      try {
+        let activeLeague: League | undefined = localStorageHelpers.getLeagueFromLocalStorage();
+        if (!activeLeague) {
+          activeLeague = await localStorageHelpers.setLeagueInLocalStorage();
+        }
+        setLeague(activeLeague);
+      } finally {
+        setIsLeagueLoading(false);
       }
-      setLeague(activeLeague);
     };
     const getSessionFromSessionKey = async () => {
       if (sessionKey) {
@@ -40,7 +46,7 @@ const App = () => {
   }, [sessionKey]);
 
   return (
-    <AppContext.Provider value={{ league, session, setLeague, setSession }}>
+    <AppContext.Provider value={{ isLeagueLoading, league, session, setLeague, setSession }}>
       <BrowserRouter>
         <Routes>
           <Route path='/' element={<Home />} />

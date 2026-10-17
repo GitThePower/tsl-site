@@ -1,5 +1,6 @@
 import {
   Box,
+  CircularProgress,
   Tab,
   Tabs,
 } from '@mui/material';
@@ -16,14 +17,19 @@ import ProfileButton from '../components/ProfileButton.tsx';
 import { User } from '../../../backend/src/types';
 
 const Home = () => {
-  const { session } = useContext(AppContext);
+  const { isLeagueLoading, session } = useContext(AppContext);
+  const [isUsersLoading, setIsUsersLoading] = useState(true);
   const [tabValue, setTabValue] = useState(0);
   const [users, setUsers] = useState([] as User[]);
 
   useEffect(() => {
     const fillTable = async () => {
-      const userResults = await api.listUsers();
-      setUsers(userResults);
+      try {
+        const userResults = await api.listUsers();
+        setUsers(userResults);
+      } finally {
+        setIsUsersLoading(false);
+      }
     };
     fillTable();
   }, []);
@@ -56,17 +62,25 @@ const Home = () => {
               <Tab label='Reporting' />
             )}
           </Tabs>
-          {tabValue === 0 && (
-            <CardPool />
-          )}
-          {tabValue === 1 && (
-            <Decklists users={users} />
-          )}
-          {tabValue === 2 && (
-            <CardCounts />
-          )}
-          {tabValue === 3 && (
-            <Box>TBD</Box>
+          {isLeagueLoading || isUsersLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <>
+              {tabValue === 0 && (
+                <CardPool />
+              )}
+              {tabValue === 1 && (
+                <Decklists users={users} />
+              )}
+              {tabValue === 2 && (
+                <CardCounts />
+              )}
+              {tabValue === 3 && (
+                <Box>TBD</Box>
+              )}
+            </>
           )}
         </Box>
       </main>
