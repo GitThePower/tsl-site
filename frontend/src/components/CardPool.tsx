@@ -1,3 +1,7 @@
+import { MagicCard, MagicCardPool } from '../../../backend/src/types';
+import scryfall from '../actions/scryfall';
+import { AppContext } from '../App';
+import ManaCost from './ManaCost';
 import { ExpandMore } from '@mui/icons-material';
 import {
   Accordion,
@@ -20,9 +24,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useContext, useState } from 'react';
-import { AppContext } from '../App';
-import ManaCost from './ManaCost';
-import { MagicCard, MagicCardPool } from '../../../backend/src/types';
+
 
 const CardPool = () => {
   const { league } = useContext(AppContext);
@@ -115,25 +117,29 @@ const CardPool = () => {
           </List>
         ))}
       </Box>
-      <Dialog open={openPopup} onClose={handleClosePopup}>
+      <Dialog onClose={handleClosePopup} open={openPopup}>
         <DialogTitle>{selectedCard.name ? selectedCard.name : 'Popup'}</DialogTitle>
         <DialogContent>
           {selectedCard && (
-              <img 
-                src={
-                  selectedCard.scryfall_id ?
-                  `https://api.scryfall.com/cards/${selectedCard.scryfall_id}?format=image` :
-                  undefined
-                } 
-                alt={selectedCard.name} 
-                style={{ width: '100%' }}
-              />
+            <img
+              alt={selectedCard.name}
+              onError={(e) => {
+                const target = e.currentTarget;
+                const fallbackUrl = scryfall.getScryfallApiImageUrl(selectedCard.scryfall_id);
+                if (fallbackUrl && target.src !== fallbackUrl) {
+                  target.src = fallbackUrl;
+                }
+              }}
+              src={scryfall.getScryfallImageUrl(selectedCard.scryfall_id)}
+              style={{ width: '100%' }}
+            />
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClosePopup}>Close</Button>
         </DialogActions>
       </Dialog>
+
     </Box>
   )
 };

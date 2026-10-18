@@ -1,9 +1,11 @@
+import Logo from './Logo';
+import ThemeToggle from './ThemeToggle';
 import {
   AppBar,
+  Box,
   Toolbar,
   Typography,
 } from '@mui/material';
-import Logo from './Logo';
 
 interface HeaderProps {
   HeaderButton: () => JSX.Element;
@@ -12,13 +14,17 @@ interface HeaderProps {
 const Header = (props: HeaderProps) => {
   return (
     <AppBar position='static'>
-      <Toolbar style={{ 'display': 'flex', 'justifyContent': 'space-between', 'alignItems': 'center' }}>
+      <Toolbar sx={{ alignItems: 'center', display: 'flex', justifyContent: 'space-between' }}>
         <Logo />
         <Typography variant='h6'>TSL Site</Typography>
-        <props.HeaderButton />
+        <Box sx={{ alignItems: 'center', display: 'flex', gap: 1 }}>
+          <ThemeToggle />
+          <props.HeaderButton />
+        </Box>
       </Toolbar>
     </AppBar>
   );
-}
+};
 
 export default Header;
+

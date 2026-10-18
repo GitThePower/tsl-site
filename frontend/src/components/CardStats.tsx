@@ -1,7 +1,9 @@
 import { MagicCard, MagicCardCounts, MagicCardPool } from '../../../backend/src/types';
+import scryfall from '../actions/scryfall';
 import { AppContext } from '../App';
 import ManaCost from './ManaCost';
 import { ExpandMore } from '@mui/icons-material';
+
 import {
   Accordion,
   AccordionDetails,
@@ -322,11 +324,14 @@ const CardStats = () => {
           {selectedCard && (
             <img
               alt={selectedCard.name}
-              src={
-                selectedCard.scryfall_id
-                  ? `https://api.scryfall.com/cards/${selectedCard.scryfall_id}?format=image`
-                  : undefined
-              }
+              onError={(e) => {
+                const target = e.currentTarget;
+                const fallbackUrl = scryfall.getScryfallApiImageUrl(selectedCard.scryfall_id);
+                if (fallbackUrl && target.src !== fallbackUrl) {
+                  target.src = fallbackUrl;
+                }
+              }}
+              src={scryfall.getScryfallImageUrl(selectedCard.scryfall_id)}
               style={{ width: '100%' }}
             />
           )}
@@ -335,6 +340,7 @@ const CardStats = () => {
           <Button onClick={handleCloseCardPopup}>Close</Button>
         </DialogActions>
       </Dialog>
+
 
       {/* Deck Colors Players Modal */}
       <Dialog

@@ -9,6 +9,10 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             {
+              name: 'mui',
+              test: /[\\/]node_modules[\\/]@mui/,
+            },
+            {
               name: 'vendor',
               test: /node_modules/,
             },
@@ -17,6 +21,7 @@ export default defineConfig({
       },
     },
   },
+
   plugins: [react()],
   server: {
     proxy: {
