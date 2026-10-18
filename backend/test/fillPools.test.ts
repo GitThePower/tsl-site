@@ -3,6 +3,7 @@ import {
   formatCardCounts,
   formatCardPool,
   getMoxfieldContent,
+  handler,
   parseGatewayCredentials,
 } from '../src/jobs/fillPools';
 import {
@@ -11,6 +12,8 @@ import {
   MagicCardCountsSchema,
   MoxfieldPool,
 } from '../src/types';
+import * as ddbUtils from '../src/utils/ddb';
+import * as s3Utils from '../src/utils/s3';
 
 describe('fillPools and LeagueSchema', () => {
   const originalFetch = global.fetch;
@@ -302,5 +305,133 @@ describe('fillPools and LeagueSchema', () => {
     expect(parsedCounts['Dark Ritual'].mainboardQuantity).toBe(4);
     expect(parsedCounts['Lightning Bolt'].quantity).toBe(4);
     expect(parsedCounts['Lightning Bolt'].mainboardQuantity).toBe(3);
+  });
+
+  it('handler should fetch decklists and write raw envelope to S3', async () => {
+    const originalEnv = process.env;
+    process.env = {
+      ...originalEnv,
+      GATEWAY_PROVIDER: 'scraperapi',
+      LEAGUE_BUCKET_NAME: 'test-league-bucket',
+      LEAGUE_TABLE_NAME: 'test-league-table',
+      REQUEST_DELAY_MS: '0',
+      USER_TABLE_NAME: 'test-user-table',
+    };
+
+    jest.spyOn(ddbUtils, 'listItems').mockImplementation(async (tableName: string) => {
+      if (tableName === 'test-league-table') {
+        return {
+          Items: [
+            {
+              cardCountsKey: 'counts-uuid-1',
+              cardPoolKey: 'pool-uuid-1',
+              isActive: true,
+              leaguename: 'Season 1',
+            },
+            {
+              cardCountsKey: 'counts-uuid-2',
+              cardPoolKey: 'pool-uuid-2',
+              isActive: false,
+              leaguename: 'Inactive Season',
+            },
+          ],
+        } as any;
+      }
+      return {
+        Items: [
+          {
+            leagues: [
+              {
+                decklistUrl: 'https://moxfield.com/decks/testDeck',
+                leaguename: 'Season 1',
+              },
+            ],
+            username: 'testUser',
+          },
+        ],
+      } as any;
+    });
+
+    global.fetch = jest.fn().mockResolvedValue({
+      json: async () => ({
+        boards: {
+          mainboard: { cards: {}, count: 0 },
+          maybeboard: { cards: {}, count: 0 },
+          sideboard: { cards: {}, count: 0 },
+        },
+      }),
+      ok: true,
+      status: 200,
+    } as any);
+
+    const putSpy = jest.spyOn(s3Utils, 'putObject').mockResolvedValue({} as any);
+
+    await handler();
+
+    expect(putSpy).toHaveBeenCalledTimes(1);
+    const putCall = putSpy.mock.calls[0][0];
+    expect(putCall.Bucket).toBe('test-league-bucket');
+    expect(putCall.Key).toBe('raw/Season 1.json');
+    expect(JSON.parse(putCall.Body as string)).toEqual({
+      cardCountsKey: 'counts-uuid-1',
+      cardPoolKey: 'pool-uuid-1',
+      hasSyncFailure: false,
+      leaguename: 'Season 1',
+      pool: {
+        testUser: {
+          decklistUrl: 'https://moxfield.com/decks/testDeck',
+          moxfieldContent: {
+            boards: {
+              mainboard: { cards: {}, count: 0 },
+              maybeboard: { cards: {}, count: 0 },
+              sideboard: { cards: {}, count: 0 },
+            },
+          },
+        },
+      },
+    });
+
+    process.env = originalEnv;
+  });
+
+  it('handler should mark poolSyncError in DynamoDB if S3 putObject fails', async () => {
+    const originalEnv = process.env;
+    process.env = {
+      ...originalEnv,
+      GATEWAY_PROVIDER: 'scraperapi',
+      LEAGUE_BUCKET_NAME: 'test-league-bucket',
+      LEAGUE_TABLE_NAME: 'test-league-table',
+      REQUEST_DELAY_MS: '0',
+      USER_TABLE_NAME: 'test-user-table',
+    };
+
+    jest.spyOn(ddbUtils, 'listItems').mockImplementation(async (tableName: string) => {
+      if (tableName === 'test-league-table') {
+        return {
+          Items: [
+            {
+              cardCountsKey: 'counts-uuid-1',
+              cardPoolKey: 'pool-uuid-1',
+              isActive: true,
+              leaguename: 'Failing S3 Season',
+            },
+          ],
+        } as any;
+      }
+      return { Items: [] } as any;
+    });
+
+    jest.spyOn(s3Utils, 'putObject').mockRejectedValue(new Error('S3 network error'));
+    const updateItemSpy = jest.spyOn(ddbUtils, 'updateItem').mockResolvedValue({} as any);
+
+    await handler();
+
+    expect(updateItemSpy).toHaveBeenCalledWith(
+      'test-league-table',
+      { leaguename: 'Failing S3 Season' },
+      { poolSyncError: true },
+    );
+
+    process.env = originalEnv;
   });
 });

@@ -1,8 +1,17 @@
 import { Duration, Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
+import { EventType } from 'aws-cdk-lib/aws-s3';
+import { LambdaDestination } from 'aws-cdk-lib/aws-s3-notifications';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 import * as path from 'path';
+import {
+  FillPoolsLambdaEnv,
+  ProcessCardCountsLambdaEnv,
+  ProcessCardPoolLambdaEnv,
+  ProcessDeckColorsLambdaEnv,
+  ResourceLambdaEnv,
+} from '../src/types';
 import { Api } from './api';
 import config from './config';
 import { DynamoDBTable } from './dynamodb';
@@ -10,7 +19,6 @@ import { CronJob } from './events';
 import { LambdaFunction, LambdaRole } from './lambda';
 import { S3 } from './s3';
 import Website from './website';
-import { ResourceLambdaEnv, FillPoolsLambdaEnv } from '../src/types';
 
 interface TslDotComStackProps extends StackProps {
   apiKeyValues: string[];
@@ -96,5 +104,73 @@ export class TslDotComStack extends Stack {
       },
       lambda: fillPoolsLambda,
     });
+
+    const processCardPoolLambdaEnv: ProcessCardPoolLambdaEnv = {
+      LEAGUE_BUCKET_NAME: leagueDataBucket.bucketName,
+      LEAGUE_TABLE_NAME: leagueResource.table.tableName,
+    };
+    const processCardPoolLambdaRole = new LambdaRole(this, `${id}-${config.job_processCardPool}-role`);
+    const processCardPoolLambda = new LambdaFunction(this, `${id}-${config.job_processCardPool}-executor`, {
+      entry: path.join(__dirname, '..', 'src', 'jobs', `${config.job_processCardPool}.ts`),
+      environment: processCardPoolLambdaEnv,
+      role: processCardPoolLambdaRole,
+      timeout: Duration.minutes(1),
+    });
+    leagueDataBucket.grantReadWrite(processCardPoolLambdaRole);
+    leagueResource.table.grantWriteData(processCardPoolLambdaRole);
+
+    leagueDataBucket.addEventNotification(
+      EventType.OBJECT_CREATED,
+      new LambdaDestination(processCardPoolLambda),
+      {
+        prefix: 'raw/',
+        suffix: '.json',
+      },
+    );
+
+    const processDeckColorsLambdaEnv: ProcessDeckColorsLambdaEnv = {
+      LEAGUE_BUCKET_NAME: leagueDataBucket.bucketName,
+      LEAGUE_TABLE_NAME: leagueResource.table.tableName,
+    };
+    const processDeckColorsLambdaRole = new LambdaRole(this, `${id}-${config.job_processDeckColors}-role`);
+    const processDeckColorsLambda = new LambdaFunction(this, `${id}-${config.job_processDeckColors}-executor`, {
+      entry: path.join(__dirname, '..', 'src', 'jobs', `${config.job_processDeckColors}.ts`),
+      environment: processDeckColorsLambdaEnv,
+      role: processDeckColorsLambdaRole,
+      timeout: Duration.minutes(1),
+    });
+    leagueDataBucket.grantReadWrite(processDeckColorsLambdaRole);
+    leagueResource.table.grantWriteData(processDeckColorsLambdaRole);
+
+    leagueDataBucket.addEventNotification(
+      EventType.OBJECT_CREATED,
+      new LambdaDestination(processDeckColorsLambda),
+      {
+        prefix: 'card-pools/',
+      },
+    );
+
+    const processCardCountsLambdaEnv: ProcessCardCountsLambdaEnv = {
+      LEAGUE_BUCKET_NAME: leagueDataBucket.bucketName,
+      LEAGUE_TABLE_NAME: leagueResource.table.tableName,
+    };
+    const processCardCountsLambdaRole = new LambdaRole(this, `${id}-${config.job_processCardCounts}-role`);
+    const processCardCountsLambda = new LambdaFunction(this, `${id}-${config.job_processCardCounts}-executor`, {
+      entry: path.join(__dirname, '..', 'src', 'jobs', `${config.job_processCardCounts}.ts`),
+      environment: processCardCountsLambdaEnv,
+      role: processCardCountsLambdaRole,
+      timeout: Duration.minutes(1),
+    });
+    leagueDataBucket.grantReadWrite(processCardCountsLambdaRole);
+    leagueResource.table.grantReadWriteData(processCardCountsLambdaRole);
+
+    leagueDataBucket.addEventNotification(
+      EventType.OBJECT_CREATED,
+      new LambdaDestination(processCardCountsLambda),
+      {
+        prefix: 'pools/',
+      },
+    );
   }
 }
+

@@ -101,8 +101,8 @@ export const handler = async (event: APIGatewayProxyEvent) => {
       const league = LeagueSchema.parse(body);
       if (!league.leaguename) throw new Error('New league must have a leaguename!');
       const { cardCounts, cardPool, ...leagueValues } = league;
-      leagueValues.cardPoolKey = v4();
-      leagueValues.cardCountsKey = v4();
+      leagueValues.cardPoolKey = `pools/${v4()}`;
+      leagueValues.cardCountsKey = `counts/${v4()}`;
       await createItem(DB_TABLE_NAME, leagueValues);
       await putObject({
         Body: JSON.stringify({}),

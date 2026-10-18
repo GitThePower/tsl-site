@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const MagicCardSchema = z.object({
+  colors: z.array(z.string()).optional(),
   mainboardQuantity: z.number().optional(),
   mana_cost: z.string(),
   name: z.string(),
@@ -72,6 +73,33 @@ export const FillPoolsLambdaEnvSchema = z.object({
   USER_TABLE_NAME: z.string(),
 });
 export type FillPoolsLambdaEnv = z.infer<typeof FillPoolsLambdaEnvSchema>;
+
+export const ProcessCardCountsLambdaEnvSchema = z.object({
+  LEAGUE_BUCKET_NAME: z.string(),
+  LEAGUE_TABLE_NAME: z.string(),
+});
+export type ProcessCardCountsLambdaEnv = z.infer<typeof ProcessCardCountsLambdaEnvSchema>;
+
+export const ProcessCardPoolLambdaEnvSchema = z.object({
+  LEAGUE_BUCKET_NAME: z.string(),
+  LEAGUE_TABLE_NAME: z.string(),
+});
+export type ProcessCardPoolLambdaEnv = z.infer<typeof ProcessCardPoolLambdaEnvSchema>;
+
+export const ProcessDeckColorsLambdaEnvSchema = z.object({
+  LEAGUE_BUCKET_NAME: z.string(),
+  LEAGUE_TABLE_NAME: z.string(),
+});
+export type ProcessDeckColorsLambdaEnv = z.infer<typeof ProcessDeckColorsLambdaEnvSchema>;
+
+export const RawPoolEnvelopeSchema = z.object({
+  cardCountsKey: z.string(),
+  cardPoolKey: z.string(),
+  hasSyncFailure: z.boolean(),
+  leaguename: z.string(),
+  pool: MoxfieldPoolSchema,
+});
+export type RawPoolEnvelope = z.infer<typeof RawPoolEnvelopeSchema>;
 
 // ######################################
 // ########## RESOURCE SCHEMAS ##########

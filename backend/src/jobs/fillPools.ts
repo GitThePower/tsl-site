@@ -3,17 +3,19 @@ import {
   FillPoolsLambdaEnvSchema,
   GatewayProvider,
   LeagueSchema,
-  MagicCard,
-  MagicCardCounts,
-  MagicCardPool,
   MoxfieldContent,
   MoxfieldContentSchema,
   MoxfieldPool,
+  RawPoolEnvelope,
   UserSchema,
 } from '../../src/types';
 import { listItems, updateItem } from '../utils/ddb';
 import { putObject } from '../utils/s3';
 import { getSecretValue } from '../utils/secrets';
+import { formatCardCounts } from './processCardCounts';
+import { formatCardPool } from './processCardPool';
+
+export { formatCardCounts, formatCardPool };
 
 export const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -177,95 +179,6 @@ export const getMoxfieldContent = async (url: string, options?: FetchMoxfieldOpt
   throw lastError ?? new Error(`Failed to retrieve Moxfield content for ${url}`);
 };
 
-const BASIC_LAND_NAMES = ['Forest', 'Island', 'Mountain', 'Plains', 'Swamp'];
-const WUBRG_INDEX: Record<string, number> = {
-  B: 2,
-  G: 4,
-  R: 3,
-  U: 1,
-  W: 0,
-};
-
-export const formatCardPool = (leaguePool: MoxfieldPool): Record<string, MagicCardPool> => {
-  const searchResults: Record<string, MagicCardPool> = {};
-  Object.keys(leaguePool).forEach((username) => {
-    searchResults[username] = {} as MagicCardPool;
-    const userCardList = {} as Record<string, MagicCard>;
-    const userColors = new Set<string>();
-    searchResults[username].decklistUrl = leaguePool[username].decklistUrl;
-    Object.entries(leaguePool[username].moxfieldContent.boards).forEach(([boardName, board]) => {
-      Object.values(board.cards).forEach((card) => {
-        const cardName = card.card.name;
-        if (BASIC_LAND_NAMES.includes(cardName)) {
-          // Do not add basics to the pool
-          return;
-        }
-        const mbQty = boardName === 'mainboard' ? card.quantity : 0;
-        if (boardName === 'mainboard' && card.card.colors) {
-          card.card.colors.forEach((c) => userColors.add(c));
-        }
-        if (cardName in userCardList) {
-          userCardList[cardName].mainboardQuantity = (userCardList[cardName].mainboardQuantity || 0) + mbQty;
-          userCardList[cardName].quantity += card.quantity;
-        } else {
-          userCardList[cardName] = {
-            mainboardQuantity: mbQty,
-            mana_cost: card.card.mana_cost,
-            name: cardName,
-            quantity: card.quantity,
-            scryfall_id: card.card?.scryfall_id,
-          };
-        }
-      });
-    });
-    searchResults[username].cardList = Object.keys(userCardList).sort().reduce(
-      (sorted, key) => {
-        sorted[key] = userCardList[key];
-        return sorted;
-      },
-      {} as Record<string, MagicCard>,
-    );
-    searchResults[username].colors = Array.from(userColors).sort(
-      (a, b) => (WUBRG_INDEX[a] ?? 99) - (WUBRG_INDEX[b] ?? 99),
-    );
-  });
-  return Object.keys(searchResults).sort().reduce(
-    (sorted, key) => {
-      sorted[key] = searchResults[key];
-      return sorted;
-    },
-    {} as Record<string, MagicCardPool>,
-  );
-};
-
-export const formatCardCounts = (cardPool: Record<string, MagicCardPool>): MagicCardCounts => {
-  const cardCounts: Record<string, MagicCard> = {};
-  Object.values(cardPool).forEach((userPool) => {
-    Object.values(userPool.cardList).forEach((card) => {
-      const mbQty = card.mainboardQuantity || 0;
-      if (card.name in cardCounts) {
-        cardCounts[card.name].mainboardQuantity = (cardCounts[card.name].mainboardQuantity || 0) + mbQty;
-        cardCounts[card.name].quantity += card.quantity;
-      } else {
-        cardCounts[card.name] = {
-          mainboardQuantity: mbQty,
-          mana_cost: card.mana_cost,
-          name: card.name,
-          quantity: card.quantity,
-          scryfall_id: card.scryfall_id,
-        };
-      }
-    });
-  });
-  return Object.keys(cardCounts).sort().reduce(
-    (sorted, key) => {
-      sorted[key] = cardCounts[key];
-      return sorted;
-    },
-    {} as MagicCardCounts,
-  );
-};
-
 export const handler = async (): Promise<void> => {
   const jobStartTime = Date.now();
   const DEFAULT_STAGGER_INTERVAL_MS = 2500;
@@ -339,46 +252,34 @@ export const handler = async (): Promise<void> => {
       }
     }
 
-    const cardPool = formatCardPool(leaguePool);
+    const rawEnvelope: RawPoolEnvelope = {
+      cardCountsKey: activeLeague.cardCountsKey ?? '',
+      cardPoolKey: activeLeague.cardPoolKey ?? '',
+      hasSyncFailure,
+      leaguename: activeLeague.leaguename ?? '',
+      pool: leaguePool,
+    };
+    const rawKey = `raw/${activeLeague.leaguename}.json`;
     const s3Input = {
-      Body: JSON.stringify(cardPool),
+      Body: JSON.stringify(rawEnvelope),
       Bucket: LEAGUE_BUCKET_NAME,
-      Key: activeLeague.cardPoolKey,
+      Key: rawKey,
     };
     try {
       await putObject(s3Input);
-      console.log(`Successfully updated pool for ${activeLeague.leaguename}!`);
+      console.log(`Successfully wrote raw pool for ${activeLeague.leaguename} to ${rawKey}!`);
     } catch (e) {
-      hasSyncFailure = true;
-      console.error(`Failed to update pool for ${activeLeague.leaguename}: ${e}`);
-    }
-
-    if (activeLeague.cardCountsKey) {
-      const cardCounts = formatCardCounts(cardPool);
-      const s3CountsInput = {
-        Body: JSON.stringify(cardCounts),
-        Bucket: LEAGUE_BUCKET_NAME,
-        Key: activeLeague.cardCountsKey,
-      };
-      try {
-        await putObject(s3CountsInput);
-        console.log(`Successfully updated card counts for ${activeLeague.leaguename}!`);
-      } catch (e) {
-        hasSyncFailure = true;
-        console.error(`Failed to update card counts for ${activeLeague.leaguename}: ${e}`);
-      }
-    }
-
-    if (activeLeague.leaguename) {
-      try {
-        await updateItem(
-          LEAGUE_TABLE_NAME,
-          { leaguename: activeLeague.leaguename },
-          { poolSyncError: hasSyncFailure },
-        );
-        console.log(`Successfully updated poolSyncError=${hasSyncFailure} for ${activeLeague.leaguename}`);
-      } catch (e) {
-        console.error(`Failed to update poolSyncError for ${activeLeague.leaguename}: ${e}`);
+      console.error(`Failed to write raw pool for ${activeLeague.leaguename}: ${e}`);
+      if (activeLeague.leaguename) {
+        try {
+          await updateItem(
+            LEAGUE_TABLE_NAME,
+            { leaguename: activeLeague.leaguename },
+            { poolSyncError: true },
+          );
+        } catch (dbError) {
+          console.error(`Failed to update poolSyncError for ${activeLeague.leaguename}: ${dbError}`);
+        }
       }
     }
   }
