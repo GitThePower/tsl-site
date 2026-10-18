@@ -1,9 +1,10 @@
 import { z } from 'zod';
 
 const MagicCardSchema = z.object({
+  mainboardQuantity: z.number().optional(),
+  mana_cost: z.string(),
   name: z.string(),
   quantity: z.number(),
-  mana_cost: z.string(),
   scryfall_id: z.string().optional(),
 });
 export type MagicCard = z.infer<typeof MagicCardSchema>;
@@ -13,6 +14,7 @@ export type MagicCardCounts = z.infer<typeof MagicCardCountsSchema>;
 
 export const MagicCardPoolSchema = z.object({
   cardList: z.record(z.string(), MagicCardSchema),
+  colors: z.array(z.string()).optional(),
   decklistUrl: z.string(),
 });
 export type MagicCardPool = z.infer<typeof MagicCardPoolSchema>;

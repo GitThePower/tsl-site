@@ -177,21 +177,39 @@ export const getMoxfieldContent = async (url: string, options?: FetchMoxfieldOpt
   throw lastError ?? new Error(`Failed to retrieve Moxfield content for ${url}`);
 };
 
+const BASIC_LAND_NAMES = ['Forest', 'Island', 'Mountain', 'Plains', 'Swamp'];
+const WUBRG_INDEX: Record<string, number> = {
+  B: 2,
+  G: 4,
+  R: 3,
+  U: 1,
+  W: 0,
+};
+
 export const formatCardPool = (leaguePool: MoxfieldPool): Record<string, MagicCardPool> => {
   const searchResults: Record<string, MagicCardPool> = {};
   Object.keys(leaguePool).forEach((username) => {
     searchResults[username] = {} as MagicCardPool;
     const userCardList = {} as Record<string, MagicCard>;
+    const userColors = new Set<string>();
     searchResults[username].decklistUrl = leaguePool[username].decklistUrl;
-    Object.values(leaguePool[username].moxfieldContent.boards).forEach((board) => {
+    Object.entries(leaguePool[username].moxfieldContent.boards).forEach(([boardName, board]) => {
       Object.values(board.cards).forEach((card) => {
         const cardName = card.card.name;
-        if (['Forest', 'Island', 'Mountain', 'Plains', 'Swamp'].includes(cardName)) {
+        if (BASIC_LAND_NAMES.includes(cardName)) {
           // Do not add basics to the pool
-        } else if (cardName in userCardList) {
+          return;
+        }
+        const mbQty = boardName === 'mainboard' ? card.quantity : 0;
+        if (boardName === 'mainboard' && card.card.colors) {
+          card.card.colors.forEach((c) => userColors.add(c));
+        }
+        if (cardName in userCardList) {
+          userCardList[cardName].mainboardQuantity = (userCardList[cardName].mainboardQuantity || 0) + mbQty;
           userCardList[cardName].quantity += card.quantity;
         } else {
           userCardList[cardName] = {
+            mainboardQuantity: mbQty,
             mana_cost: card.card.mana_cost,
             name: cardName,
             quantity: card.quantity,
@@ -207,6 +225,9 @@ export const formatCardPool = (leaguePool: MoxfieldPool): Record<string, MagicCa
       },
       {} as Record<string, MagicCard>,
     );
+    searchResults[username].colors = Array.from(userColors).sort(
+      (a, b) => (WUBRG_INDEX[a] ?? 99) - (WUBRG_INDEX[b] ?? 99),
+    );
   });
   return Object.keys(searchResults).sort().reduce(
     (sorted, key) => {
@@ -221,10 +242,13 @@ export const formatCardCounts = (cardPool: Record<string, MagicCardPool>): Magic
   const cardCounts: Record<string, MagicCard> = {};
   Object.values(cardPool).forEach((userPool) => {
     Object.values(userPool.cardList).forEach((card) => {
+      const mbQty = card.mainboardQuantity || 0;
       if (card.name in cardCounts) {
+        cardCounts[card.name].mainboardQuantity = (cardCounts[card.name].mainboardQuantity || 0) + mbQty;
         cardCounts[card.name].quantity += card.quantity;
       } else {
         cardCounts[card.name] = {
+          mainboardQuantity: mbQty,
           mana_cost: card.mana_cost,
           name: card.name,
           quantity: card.quantity,

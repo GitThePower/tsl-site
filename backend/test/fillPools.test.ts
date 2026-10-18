@@ -242,6 +242,8 @@ describe('fillPools and LeagueSchema', () => {
     expect(pool.user1.cardList['Mountain']).toBeUndefined();
     expect(pool.user1.cardList['Lightning Bolt']).toBeDefined();
     expect(pool.user1.cardList['Lightning Bolt'].quantity).toBe(4);
+    expect(pool.user1.cardList['Lightning Bolt'].mainboardQuantity).toBe(3);
+    expect(pool.user1.colors).toEqual(['R']);
   });
 
   it('formatCardCounts should aggregate card quantities across all users and sort alphabetically', () => {
@@ -249,12 +251,14 @@ describe('fillPools and LeagueSchema', () => {
       alice: {
         cardList: {
           'Counterspell': {
+            mainboardQuantity: 2,
             mana_cost: '{U}{U}',
             name: 'Counterspell',
             quantity: 2,
             scryfall_id: 'cs-id',
           },
           'Lightning Bolt': {
+            mainboardQuantity: 2,
             mana_cost: '{R}',
             name: 'Lightning Bolt',
             quantity: 3,
@@ -266,12 +270,14 @@ describe('fillPools and LeagueSchema', () => {
       bob: {
         cardList: {
           'Dark Ritual': {
+            mainboardQuantity: 4,
             mana_cost: '{B}',
             name: 'Dark Ritual',
             quantity: 4,
             scryfall_id: 'ritual-id',
           },
           'Lightning Bolt': {
+            mainboardQuantity: 1,
             mana_cost: '{R}',
             name: 'Lightning Bolt',
             quantity: 1,
@@ -291,7 +297,10 @@ describe('fillPools and LeagueSchema', () => {
       'Lightning Bolt',
     ]);
     expect(parsedCounts['Counterspell'].quantity).toBe(2);
+    expect(parsedCounts['Counterspell'].mainboardQuantity).toBe(2);
     expect(parsedCounts['Dark Ritual'].quantity).toBe(4);
+    expect(parsedCounts['Dark Ritual'].mainboardQuantity).toBe(4);
     expect(parsedCounts['Lightning Bolt'].quantity).toBe(4);
+    expect(parsedCounts['Lightning Bolt'].mainboardQuantity).toBe(3);
   });
 });

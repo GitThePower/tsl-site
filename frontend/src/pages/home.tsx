@@ -1,3 +1,13 @@
+import { User } from '../../../backend/src/types';
+import api from '../actions/api';
+import conditions from '../actions/conditions.ts';
+import { AppContext } from '../App.tsx';
+import CardPool from '../components/CardPool';
+import CardStats from '../components/CardStats';
+import Decklists from '../components/Decklists';
+import Header from '../components/Header.tsx';
+import LoginPageButton from '../components/LoginPageButton.tsx';
+import ProfileButton from '../components/ProfileButton.tsx';
 import {
   Box,
   CircularProgress,
@@ -5,16 +15,6 @@ import {
   Tabs,
 } from '@mui/material';
 import { ChangeEvent, useContext, useEffect, useState } from 'react';
-import api from '../actions/api';
-import conditions from '../actions/conditions.ts';
-import { AppContext } from '../App.tsx';
-import CardCounts from '../components/CardCounts';
-import CardPool from '../components/CardPool';
-import Decklists from '../components/Decklists';
-import Header from '../components/Header.tsx';
-import LoginPageButton from '../components/LoginPageButton.tsx';
-import ProfileButton from '../components/ProfileButton.tsx';
-import { User } from '../../../backend/src/types';
 
 const Home = () => {
   const { isLeagueLoading, session } = useContext(AppContext);
@@ -57,7 +57,7 @@ const Home = () => {
           >
             <Tab label='Pool' />
             <Tab label='Decklists' />
-            <Tab label='Card Counts' />
+            <Tab label='Card Stats' />
             {conditions.sessionIsActive(session) && (
               <Tab label='Reporting' />
             )}
@@ -75,7 +75,7 @@ const Home = () => {
                 <Decklists users={users} />
               )}
               {tabValue === 2 && (
-                <CardCounts />
+                <CardStats />
               )}
               {tabValue === 3 && (
                 <Box>TBD</Box>
