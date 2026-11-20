@@ -1,3 +1,5 @@
+import * as assert from 'node:assert/strict';
+import { after, afterEach, beforeEach, describe, it, mock } from 'node:test';
 import { S3Event } from 'aws-lambda';
 import {
   calculateDeckColors,
@@ -18,24 +20,28 @@ describe('processDeckColors job', () => {
       LEAGUE_BUCKET_NAME: 'test-league-bucket',
       LEAGUE_TABLE_NAME: 'test-league-table',
     };
-    jest.restoreAllMocks();
+    mock.restoreAll();
   });
 
-  afterAll(() => {
+  afterEach(() => {
+    mock.restoreAll();
+  });
+
+  after(() => {
     process.env = originalEnv;
   });
 
   it('isLand should return true for empty mana costs and false otherwise', () => {
-    expect(isLand({ mana_cost: '', name: 'Steam Vents', quantity: 1 } as MagicCard)).toBe(true);
-    expect(isLand({ mana_cost: '   ', name: 'Command Tower', quantity: 1 } as MagicCard)).toBe(true);
-    expect(isLand({ mana_cost: '{R}', name: 'Lightning Bolt', quantity: 1 } as MagicCard)).toBe(false);
-    expect(isLand({ mana_cost: '{0}', name: 'Mox Diamond', quantity: 1 } as MagicCard)).toBe(false);
+    assert.equal(isLand({ mana_cost: '', name: 'Steam Vents', quantity: 1 } as MagicCard), true);
+    assert.equal(isLand({ mana_cost: '   ', name: 'Command Tower', quantity: 1 } as MagicCard), true);
+    assert.equal(isLand({ mana_cost: '{R}', name: 'Lightning Bolt', quantity: 1 } as MagicCard), false);
+    assert.equal(isLand({ mana_cost: '{0}', name: 'Mox Diamond', quantity: 1 } as MagicCard), false);
   });
 
   it('normalizeFinalPoolKey should ensure pools/ prefix', () => {
-    expect(normalizeFinalPoolKey('uuid-123')).toBe('pools/uuid-123');
-    expect(normalizeFinalPoolKey('card-pools/uuid-123')).toBe('pools/uuid-123');
-    expect(normalizeFinalPoolKey('pools/uuid-123')).toBe('pools/uuid-123');
+    assert.equal(normalizeFinalPoolKey('uuid-123'), 'pools/uuid-123');
+    assert.equal(normalizeFinalPoolKey('card-pools/uuid-123'), 'pools/uuid-123');
+    assert.equal(normalizeFinalPoolKey('pools/uuid-123'), 'pools/uuid-123');
   });
 
   it('calculateDeckColors should exclude colors representing less than 10% of non-land mainboard cards', () => {
@@ -112,7 +118,7 @@ describe('processDeckColors job', () => {
     };
 
     const colors = calculateDeckColors(cardList);
-    expect(colors).toEqual(['R', 'G']);
+    assert.deepEqual(colors, ['R', 'G']);
   });
 
   it('calculateDeckColors should include a color at exactly 10% and handle multi-color cards', () => {
@@ -137,7 +143,7 @@ describe('processDeckColors job', () => {
 
     const colors = calculateDeckColors(cardList);
     // Ordered by WUBRG: W, U, R
-    expect(colors).toEqual(['W', 'U', 'R']);
+    assert.deepEqual(colors, ['W', 'U', 'R']);
   });
 
   it('calculateDeckColors should return empty array for all-land decks', () => {
@@ -151,7 +157,7 @@ describe('processDeckColors job', () => {
       },
     };
 
-    expect(calculateDeckColors(cardList)).toEqual([]);
+    assert.deepEqual(calculateDeckColors(cardList), []);
   });
 
   it('handler should read from card-pools, compute colors, and write to pools with metadata', async () => {
@@ -178,7 +184,7 @@ describe('processDeckColors job', () => {
       },
     };
 
-    jest.spyOn(s3Utils, 'getObject').mockResolvedValue({
+    mock.method(s3Utils, 'getObject', async () => ({
       Body: {
         transformToString: async () => JSON.stringify(mockPool),
       } as any,
@@ -188,9 +194,9 @@ describe('processDeckColors job', () => {
         hassyncfailure: 'false',
         leaguename: 'Season 1',
       },
-    } as any);
+    }) as any);
 
-    const putSpy = jest.spyOn(s3Utils, 'putObject').mockResolvedValue({} as any);
+    const putSpy = mock.method(s3Utils, 'putObject', async () => ({} as any));
 
     const event: S3Event = {
       Records: [
@@ -205,11 +211,14 @@ describe('processDeckColors job', () => {
 
     await handler(event);
 
-    expect(putSpy).toHaveBeenCalledTimes(1);
-    const putCall = putSpy.mock.calls[0][0];
-    expect(putCall.Bucket).toBe('test-league-bucket');
-    expect(putCall.Key).toBe('pools/final-pool-uuid');
-    expect(putCall.Metadata).toEqual({
+    assert.equal(putSpy.mock.callCount(), 1);
+    const putCall = putSpy.mock.calls[0].arguments[0];
+    if (!putCall) {
+      assert.fail('Expected putObject to be called with input');
+    }
+    assert.equal(putCall.Bucket, 'test-league-bucket');
+    assert.equal(putCall.Key, 'pools/final-pool-uuid');
+    assert.deepEqual(putCall.Metadata, {
       cardcountskey: 'counts/counts-uuid',
       hassyncfailure: 'false',
       leaguename: 'Season 1',
@@ -217,20 +226,20 @@ describe('processDeckColors job', () => {
 
     const parsedBody = JSON.parse(putCall.Body as string);
     // Shock was 1 out of 11 non-land cards (9.09% < 10%), so Red is excluded!
-    expect(parsedBody.alice.colors).toEqual(['U']);
+    assert.deepEqual(parsedBody.alice.colors, ['U']);
   });
 
   it('handler should update DynamoDB poolSyncError when an error occurs', async () => {
-    jest.spyOn(s3Utils, 'getObject').mockResolvedValue({
+    mock.method(s3Utils, 'getObject', async () => ({
       Body: {
         transformToString: async () => 'invalid-json',
       } as any,
       Metadata: {
         leaguename: 'Failing Colors Season',
       },
-    } as any);
+    }) as any);
 
-    const updateItemSpy = jest.spyOn(ddbUtils, 'updateItem').mockResolvedValue({} as any);
+    const updateItemSpy = mock.method(ddbUtils, 'updateItem', async () => ({} as any));
 
     const event: S3Event = {
       Records: [
@@ -243,11 +252,11 @@ describe('processDeckColors job', () => {
       ],
     };
 
-    await expect(handler(event)).rejects.toThrow();
-    expect(updateItemSpy).toHaveBeenCalledWith(
+    await assert.rejects(handler(event));
+    assert.deepEqual(updateItemSpy.mock.calls[0].arguments, [
       'test-league-table',
       { leaguename: 'Failing Colors Season' },
       { poolSyncError: true },
-    );
+    ]);
   });
 });

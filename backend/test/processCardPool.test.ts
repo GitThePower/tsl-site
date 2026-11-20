@@ -1,3 +1,5 @@
+import * as assert from 'node:assert/strict';
+import { after, afterEach, beforeEach, describe, it, mock } from 'node:test';
 import { S3Event } from 'aws-lambda';
 import {
   formatCardPool,
@@ -19,21 +21,25 @@ describe('processCardPool job', () => {
       LEAGUE_BUCKET_NAME: 'test-league-bucket',
       LEAGUE_TABLE_NAME: 'test-league-table',
     };
-    jest.restoreAllMocks();
+    mock.restoreAll();
   });
 
-  afterAll(() => {
+  afterEach(() => {
+    mock.restoreAll();
+  });
+
+  after(() => {
     process.env = originalEnv;
   });
 
   it('normalizePoolKey, normalizeCardPoolKey, and normalizeCountsKey should format prefixes correctly', () => {
-    expect(normalizeCardPoolKey('uuid-123')).toBe('card-pools/uuid-123');
-    expect(normalizeCardPoolKey('pools/uuid-123')).toBe('card-pools/uuid-123');
-    expect(normalizeCardPoolKey('card-pools/uuid-123')).toBe('card-pools/uuid-123');
-    expect(normalizePoolKey('uuid-123')).toBe('pools/uuid-123');
-    expect(normalizePoolKey('pools/uuid-123')).toBe('pools/uuid-123');
-    expect(normalizeCountsKey('uuid-456')).toBe('counts/uuid-456');
-    expect(normalizeCountsKey('counts/uuid-456')).toBe('counts/uuid-456');
+    assert.equal(normalizeCardPoolKey('uuid-123'), 'card-pools/uuid-123');
+    assert.equal(normalizeCardPoolKey('pools/uuid-123'), 'card-pools/uuid-123');
+    assert.equal(normalizeCardPoolKey('card-pools/uuid-123'), 'card-pools/uuid-123');
+    assert.equal(normalizePoolKey('uuid-123'), 'pools/uuid-123');
+    assert.equal(normalizePoolKey('pools/uuid-123'), 'pools/uuid-123');
+    assert.equal(normalizeCountsKey('uuid-456'), 'counts/uuid-456');
+    assert.equal(normalizeCountsKey('counts/uuid-456'), 'counts/uuid-456');
   });
 
   it('formatCardPool should ignore basic lands, combine quantities, and order colors by WUBRG', () => {
@@ -94,11 +100,11 @@ describe('processCardPool job', () => {
     };
 
     const pool = formatCardPool(mockMoxfieldPool);
-    expect(pool.user1.cardList['Mountain']).toBeUndefined();
-    expect(pool.user1.cardList['Lightning Helix']).toBeDefined();
-    expect(pool.user1.cardList['Lightning Helix'].quantity).toBe(4);
-    expect(pool.user1.cardList['Lightning Helix'].mainboardQuantity).toBe(3);
-    expect(pool.user1.colors).toEqual(['W', 'R']);
+    assert.equal(pool.user1.cardList['Mountain'], undefined);
+    assert.notEqual(pool.user1.cardList['Lightning Helix'], undefined);
+    assert.equal(pool.user1.cardList['Lightning Helix'].quantity, 4);
+    assert.equal(pool.user1.cardList['Lightning Helix'].mainboardQuantity, 3);
+    assert.deepEqual(pool.user1.colors, ['W', 'R']);
   });
 
   it('formatCardPool should fall back to card_faces and empty mana_cost when top-level mana_cost or colors are omitted', () => {
@@ -149,7 +155,7 @@ describe('processCardPool job', () => {
     };
 
     const pool = formatCardPool(mockMoxfieldPool);
-    expect(pool.user1.cardList['Delver of Secrets // Insectile Aberration']).toEqual({
+    assert.deepEqual(pool.user1.cardList['Delver of Secrets // Insectile Aberration'], {
       colors: ['U'],
       mainboardQuantity: 2,
       mana_cost: '{1}{U}',
@@ -157,7 +163,7 @@ describe('processCardPool job', () => {
       quantity: 2,
       scryfall_id: undefined,
     });
-    expect(pool.user1.cardList['Shatterskull Smashing // Shatterskull, the Hammer Pass']).toEqual({
+    assert.deepEqual(pool.user1.cardList['Shatterskull Smashing // Shatterskull, the Hammer Pass'], {
       colors: ['W', 'R'],
       mainboardQuantity: 1,
       mana_cost: '{2}{R} // {1}{W}',
@@ -165,7 +171,7 @@ describe('processCardPool job', () => {
       quantity: 1,
       scryfall_id: undefined,
     });
-    expect(pool.user1.cardList['Command Tower']).toEqual({
+    assert.deepEqual(pool.user1.cardList['Command Tower'], {
       colors: [],
       mainboardQuantity: 1,
       mana_cost: '',
@@ -173,7 +179,7 @@ describe('processCardPool job', () => {
       quantity: 1,
       scryfall_id: undefined,
     });
-    expect(pool.user1.colors).toEqual(['W', 'U', 'R']);
+    assert.deepEqual(pool.user1.colors, ['W', 'U', 'R']);
   });
 
   it('handler should read raw envelope from S3, format pool, and write to S3 with metadata', async () => {
@@ -211,13 +217,13 @@ describe('processCardPool job', () => {
       },
     };
 
-    jest.spyOn(s3Utils, 'getObject').mockResolvedValue({
+    mock.method(s3Utils, 'getObject', async () => ({
       Body: {
         transformToString: async () => JSON.stringify(rawEnvelope),
       } as any,
-    } as any);
+    }) as any);
 
-    const putSpy = jest.spyOn(s3Utils, 'putObject').mockResolvedValue({} as any);
+    const putSpy = mock.method(s3Utils, 'putObject', async () => ({} as any));
 
     const event: S3Event = {
       Records: [
@@ -232,11 +238,14 @@ describe('processCardPool job', () => {
 
     await handler(event);
 
-    expect(putSpy).toHaveBeenCalledTimes(1);
-    const putCall = putSpy.mock.calls[0][0];
-    expect(putCall.Bucket).toBe('test-league-bucket');
-    expect(putCall.Key).toBe('card-pools/pool-uuid');
-    expect(putCall.Metadata).toEqual({
+    assert.equal(putSpy.mock.callCount(), 1);
+    const putCall = putSpy.mock.calls[0].arguments[0];
+    if (!putCall) {
+      assert.fail('Expected putObject to be called with input');
+    }
+    assert.equal(putCall.Bucket, 'test-league-bucket');
+    assert.equal(putCall.Key, 'card-pools/pool-uuid');
+    assert.deepEqual(putCall.Metadata, {
       cardcountskey: 'counts/counts-uuid',
       cardpoolkey: 'pools/pool-uuid',
       hassyncfailure: 'false',
@@ -244,12 +253,12 @@ describe('processCardPool job', () => {
     });
 
     const parsedBody = JSON.parse(putCall.Body as string);
-    expect(parsedBody.player1.cardList['Shock'].quantity).toBe(2);
-    expect(parsedBody.player1.cardList['Shock'].colors).toEqual(['R']);
+    assert.equal(parsedBody.player1.cardList['Shock'].quantity, 2);
+    assert.deepEqual(parsedBody.player1.cardList['Shock'].colors, ['R']);
   });
 
   it('handler should update DynamoDB poolSyncError when processing fails', async () => {
-    jest.spyOn(s3Utils, 'getObject').mockResolvedValue({
+    mock.method(s3Utils, 'getObject', async () => ({
       Body: {
         transformToString: async () => JSON.stringify({
           cardCountsKey: 'c-1',
@@ -259,9 +268,9 @@ describe('processCardPool job', () => {
           pool: 'invalid-pool',
         }),
       } as any,
-    } as any);
+    }) as any);
 
-    const updateItemSpy = jest.spyOn(ddbUtils, 'updateItem').mockResolvedValue({} as any);
+    const updateItemSpy = mock.method(ddbUtils, 'updateItem', async () => ({} as any));
 
     const event: S3Event = {
       Records: [
@@ -274,11 +283,11 @@ describe('processCardPool job', () => {
       ],
     };
 
-    await expect(handler(event)).rejects.toThrow();
-    expect(updateItemSpy).toHaveBeenCalledWith(
+    await assert.rejects(handler(event));
+    assert.deepEqual(updateItemSpy.mock.calls[0].arguments, [
       'test-league-table',
       { leaguename: 'Failed Season' },
       { poolSyncError: true },
-    );
+    ]);
   });
 });

@@ -1,8 +1,17 @@
+import * as assert from 'node:assert/strict';
+import { after, describe, test } from 'node:test';
 import * as cdk from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
+import { CloudAssembly } from 'aws-cdk-lib/cx-api';
 import { TslDotComStack } from '../lib/stack';
 
 describe('TslDotComStack', () => {
+  after(() => {
+    if (!process.env.CDK_NO_CLEAN_TESTS) {
+      CloudAssembly.cleanupTemporaryDirectories();
+    }
+  });
+
   test('Stack should have expected resource counts and authorizer method configuration', () => {
     const app = new cdk.App();
     const stack = new TslDotComStack(app, 'MyTestStack', {
@@ -30,8 +39,8 @@ describe('TslDotComStack', () => {
     const openAuthMethods = methods.filter(
       (method) => method.Properties?.AuthorizationType === 'NONE',
     );
-    expect(customAuthMethods).toHaveLength(8);
-    expect(openAuthMethods).toHaveLength(7);
+    assert.equal(customAuthMethods.length, 8);
+    assert.equal(openAuthMethods.length, 7);
 
     template.hasResourceProperties('AWS::ApiGateway::Authorizer', {
       AuthorizerResultTtlInSeconds: 0,
@@ -39,10 +48,19 @@ describe('TslDotComStack', () => {
       Type: 'REQUEST',
     });
 
-    const authFn = Object.values(template.findResources('AWS::Lambda::Function')).find(
+    const lambdaFns = Object.values(template.findResources('AWS::Lambda::Function'));
+    const appLambdas = lambdaFns.filter(
+      (fn) => typeof fn.Properties?.FunctionName === 'string' && fn.Properties.FunctionName.startsWith('MyTestStack-'),
+    );
+    assert.equal(appLambdas.length, 8);
+    for (const fn of appLambdas) {
+      assert.equal(fn.Properties?.Runtime, 'nodejs24.x');
+    }
+
+    const authFn = lambdaFns.find(
       (fn) => fn.Properties?.FunctionName === 'MyTestStack-authorizer-executor',
     );
-    expect(authFn?.Properties?.Environment?.Variables?.ADMIN_API_KEY).toBeUndefined();
+    assert.equal(authFn?.Properties?.Environment?.Variables?.ADMIN_API_KEY, undefined);
   });
 
   test('Stack sets ADMIN_API_KEY only when multiple API keys are provided', () => {
@@ -56,6 +74,6 @@ describe('TslDotComStack', () => {
     const authFn = Object.values(template.findResources('AWS::Lambda::Function')).find(
       (fn) => fn.Properties?.FunctionName === 'MultiKeyStack-authorizer-executor',
     );
-    expect(authFn?.Properties?.Environment?.Variables?.ADMIN_API_KEY).toBe('adminKey');
+    assert.equal(authFn?.Properties?.Environment?.Variables?.ADMIN_API_KEY, 'adminKey');
   });
 });

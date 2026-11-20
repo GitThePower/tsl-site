@@ -25,7 +25,6 @@ This repository is structured as a multi-package full-stack project consisting o
 │   ├── test/                  # Test suites for backend infrastructure and logic
 │   ├── cdk.json               # AWS CDK toolkit configuration and execution flags
 │   ├── cleanUp.ps1            # PowerShell script to clean compiled JS/d.ts files and test artifacts
-│   ├── jest.config.js         # Jest test runner configuration using ts-jest
 │   ├── package.json           # Backend dependencies, CDK commands, and test scripts
 │   └── tsconfig.json          # TypeScript compiler options for the backend
 ├── frontend/                  # React Single-Page Application (SPA)
@@ -84,7 +83,7 @@ flowchart LR
         UsagePlan["Usage Plan (Throttling & API Keys)"]
     end
 
-    subgraph Compute["Serverless Compute (ARM64 Node.js 22)"]
+    subgraph Compute["Serverless Compute (ARM64 Node.js 24)"]
         UserFn["User Lambda"]
         LeagueFn["League Lambda"]
         SessionFn["Session Lambda"]
@@ -127,7 +126,7 @@ flowchart LR
 ### Core Components
 
 - **Frontend (Presentation)**: Single-page application built with React 18, Vite, TypeScript, Material UI (MUI), and `mana-font` for native Magic: The Gathering mana symbol rendering. Compiled to static assets hosted in Amazon S3 and distributed via CloudFront.
-- **Backend (API & Infrastructure)**: AWS CDK v2 TypeScript app provisioning Amazon API Gateway with custom regional domain mapping (`api.tavernsealedleague.com`) and usage plan rate limiting. Lambdas run on the ARM_64 architecture with Node.js 22 runtime.
+- **Backend (API & Infrastructure)**: AWS CDK v2 TypeScript app provisioning Amazon API Gateway with custom regional domain mapping (`api.tavernsealedleague.com`) and usage plan rate limiting. Lambdas run on the ARM_64 architecture with Node.js 24 runtime.
 - **Persistence (Data Tier)**:
   - **Amazon DynamoDB**: Three independent tables (`user`, `league`, `session`) managing user profiles, league states, and active sessions.
   - **Amazon S3**: Dedicated S3 bucket for serialized league card pool datasets, keeping heavy JSON payloads out of DynamoDB attribute limits.
@@ -148,7 +147,7 @@ flowchart LR
 
 All modifications must pass relevant test suites and compilation checks before being committed or deployed.
 
-### Single-Purpose Unit & Infrastructure Tests (Jest)
+### Single-Purpose Unit & Infrastructure Tests (Node.js Test Runner)
 
 - **Philosophy**: Tests validate CDK CloudFormation resource definitions, input/output contracts, and background job logic in isolation.
 - **Location**: `backend/test/`

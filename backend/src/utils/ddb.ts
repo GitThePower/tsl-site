@@ -1,9 +1,9 @@
 import { DeleteItemCommand, DynamoDBClient, GetItemCommand, PutItemCommand, ReturnValue, ScanCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { ZodEffects, ZodTypeAny } from 'zod';
-import { ResourceLambdaEnvSchema } from '../../src/types';
+import { ZodType } from 'zod';
 import config from '../../lib/config';
+import { ResourceLambdaEnvSchema } from '../../src/types';
 
 let _dynamoDbClient: DynamoDBClient | null;
 const getDdbClient = (): DynamoDBClient => {
@@ -107,7 +107,7 @@ export const listItems = async (tableName: string): Promise<{ Items: Record<stri
   }
 };
 
-export const ddbCrudHandler = async (event: APIGatewayProxyEvent, itemSchema: ZodEffects<ZodTypeAny>): Promise<APIGatewayProxyResult> => {
+export const ddbCrudHandler = async (event: APIGatewayProxyEvent, itemSchema: ZodType): Promise<APIGatewayProxyResult> => {
   try {
     const { DB_TABLE_NAME } = ResourceLambdaEnvSchema.parse(process.env);
     const { body, httpMethod, queryStringParameters } = event;

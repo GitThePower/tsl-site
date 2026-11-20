@@ -1,3 +1,5 @@
+import * as assert from 'node:assert/strict';
+import { after, afterEach, beforeEach, describe, it, mock } from 'node:test';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { handler } from '../src/resources/league';
 import * as ddbUtils from '../src/utils/ddb';
@@ -28,10 +30,14 @@ describe('league resource Lambda', () => {
       DB_TABLE_NAME: 'test-league-table',
       S3_BUCKET_NAME: 'test-league-bucket',
     };
-    jest.restoreAllMocks();
+    mock.restoreAll();
   });
 
-  afterAll(() => {
+  afterEach(() => {
+    mock.restoreAll();
+  });
+
+  after(() => {
     process.env = originalEnv;
   });
 
@@ -43,15 +49,15 @@ describe('league resource Lambda', () => {
         requestContext: { authorizer: { isAdmin: 'false', username: 'alice' } } as any,
       }),
     );
-    expect(nonAdminRes.statusCode).toBe(403);
+    assert.equal(nonAdminRes.statusCode, 403);
 
-    jest.spyOn(ddbUtils, 'getItem').mockResolvedValueOnce({ Item: null });
-    jest.spyOn(ddbUtils, 'listItems').mockResolvedValueOnce({
+    mock.method(ddbUtils, 'getItem', async () => ({ Item: null }));
+    mock.method(ddbUtils, 'listItems', async () => ({
       Items: [{ isActive: true, leaguename: 'Season 1' }],
-    });
-    const updateSpy = jest.spyOn(ddbUtils, 'updateItem').mockResolvedValue({ Item: null });
-    const createSpy = jest.spyOn(ddbUtils, 'createItem').mockResolvedValue();
-    const putSpy = jest.spyOn(s3Utils, 'putObject').mockResolvedValue({} as any);
+    }));
+    const updateSpy = mock.method(ddbUtils, 'updateItem', async () => ({ Item: null }));
+    const createSpy = mock.method(ddbUtils, 'createItem', async () => {});
+    const putSpy = mock.method(s3Utils, 'putObject', async () => ({} as any));
 
     const res = await handler(
       makeEvent({
@@ -61,30 +67,30 @@ describe('league resource Lambda', () => {
       }),
     );
 
-    expect(res.statusCode).toBe(200);
-    expect(updateSpy).toHaveBeenCalledWith(
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(updateSpy.mock.calls[0].arguments, [
       'test-league-table',
       { leaguename: 'Season 1' },
       { isActive: false },
-    );
-    expect(createSpy).toHaveBeenCalledTimes(1);
-    expect(putSpy).toHaveBeenCalledTimes(2);
-    expect(JSON.parse(res.body).leaguename).toBe('Season 2');
-    expect(JSON.parse(res.body).isActive).toBe(true);
+    ]);
+    assert.equal(createSpy.mock.callCount(), 1);
+    assert.equal(putSpy.mock.callCount(), 2);
+    assert.equal(JSON.parse(res.body).leaguename, 'Season 2');
+    assert.equal(JSON.parse(res.body).isActive, true);
   });
 
   it('PUT /league should switch active leagues safely and prevent deactivating the sole active league', async () => {
-    jest.spyOn(ddbUtils, 'getItem').mockResolvedValue({
+    mock.method(ddbUtils, 'getItem', async () => ({
       Item: {
         cardCountsKey: 'counts/1',
         cardPoolKey: 'pools/1',
         isActive: true,
         leaguename: 'Season 1',
       },
-    });
-    jest.spyOn(ddbUtils, 'listItems').mockResolvedValue({
+    }));
+    mock.method(ddbUtils, 'listItems', async () => ({
       Items: [{ isActive: true, leaguename: 'Season 1' }],
-    });
+    }));
 
     const deactivateOnlyRes = await handler(
       makeEvent({
@@ -94,35 +100,37 @@ describe('league resource Lambda', () => {
         requestContext: { authorizer: { isAdmin: 'true', username: 'henry' } } as any,
       }),
     );
-    expect(deactivateOnlyRes.statusCode).toBe(400);
+    assert.equal(deactivateOnlyRes.statusCode, 400);
 
-    jest.spyOn(ddbUtils, 'getItem').mockResolvedValueOnce({
+    mock.restoreAll();
+
+    mock.method(ddbUtils, 'getItem', async () => ({
       Item: {
         cardCountsKey: 'counts/2',
         cardPoolKey: 'pools/2',
         isActive: false,
         leaguename: 'Season 2',
       },
-    });
-    jest.spyOn(ddbUtils, 'listItems').mockResolvedValueOnce({
+    }));
+    mock.method(ddbUtils, 'listItems', async () => ({
       Items: [
         { isActive: true, leaguename: 'Season 1' },
         { isActive: false, leaguename: 'Season 2' },
       ],
-    });
-    const updateSpy = jest.spyOn(ddbUtils, 'updateItem')
-      .mockResolvedValueOnce({ Item: null })
-      .mockResolvedValueOnce({
-        Item: {
-          cardCountsKey: 'counts/2',
-          cardPoolKey: 'pools/2',
-          isActive: true,
-          leaguename: 'Season 2',
-        },
-      });
-    jest.spyOn(s3Utils, 'getObject').mockResolvedValue({
+    }));
+    const updateSpy = mock.method(ddbUtils, 'updateItem');
+    updateSpy.mock.mockImplementationOnce(async () => ({ Item: null }), 0);
+    updateSpy.mock.mockImplementationOnce(async () => ({
+      Item: {
+        cardCountsKey: 'counts/2',
+        cardPoolKey: 'pools/2',
+        isActive: true,
+        leaguename: 'Season 2',
+      },
+    }), 1);
+    mock.method(s3Utils, 'getObject', async () => ({
       Body: { transformToString: async () => '{}' },
-    } as any);
+    }) as any);
 
     const activateRes = await handler(
       makeEvent({
@@ -132,25 +140,23 @@ describe('league resource Lambda', () => {
         requestContext: { authorizer: { isAdmin: 'true', username: 'henry' } } as any,
       }),
     );
-    expect(activateRes.statusCode).toBe(200);
-    expect(updateSpy).toHaveBeenNthCalledWith(
-      1,
+    assert.equal(activateRes.statusCode, 200);
+    assert.deepEqual(updateSpy.mock.calls[0].arguments, [
       'test-league-table',
       { leaguename: 'Season 1' },
       { isActive: false },
-    );
-    expect(updateSpy).toHaveBeenNthCalledWith(
-      2,
+    ]);
+    assert.deepEqual(updateSpy.mock.calls[1].arguments, [
       'test-league-table',
       { leaguename: 'Season 2' },
       { isActive: true },
-    );
+    ]);
   });
 
   it('DELETE /league should block deleting active league and delete inactive league + S3 objects', async () => {
-    jest.spyOn(ddbUtils, 'getItem').mockResolvedValueOnce({
+    mock.method(ddbUtils, 'getItem', async () => ({
       Item: { isActive: true, leaguename: 'Active League' },
-    });
+    }));
     const activeDeleteRes = await handler(
       makeEvent({
         httpMethod: 'DELETE',
@@ -158,25 +164,27 @@ describe('league resource Lambda', () => {
         requestContext: { authorizer: { isAdmin: 'true', username: 'henry' } } as any,
       }),
     );
-    expect(activeDeleteRes.statusCode).toBe(400);
+    assert.equal(activeDeleteRes.statusCode, 400);
 
-    jest.spyOn(ddbUtils, 'getItem').mockResolvedValueOnce({
+    mock.restoreAll();
+
+    mock.method(ddbUtils, 'getItem', async () => ({
       Item: {
         cardCountsKey: 'counts/old',
         cardPoolKey: 'pools/old',
         isActive: false,
         leaguename: 'Old League',
       },
-    });
-    const deleteDdbSpy = jest.spyOn(ddbUtils, 'deleteItem').mockResolvedValueOnce({
+    }));
+    const deleteDdbSpy = mock.method(ddbUtils, 'deleteItem', async () => ({
       Item: {
         cardCountsKey: 'counts/old',
         cardPoolKey: 'pools/old',
         isActive: false,
         leaguename: 'Old League',
       },
-    });
-    const deleteS3Spy = jest.spyOn(s3Utils, 'deleteObject').mockResolvedValue({} as any);
+    }));
+    const deleteS3Spy = mock.method(s3Utils, 'deleteObject', async () => ({} as any));
 
     const inactiveDeleteRes = await handler(
       makeEvent({
@@ -185,8 +193,8 @@ describe('league resource Lambda', () => {
         requestContext: { authorizer: { isAdmin: 'true', username: 'henry' } } as any,
       }),
     );
-    expect(inactiveDeleteRes.statusCode).toBe(200);
-    expect(deleteDdbSpy).toHaveBeenCalledWith('test-league-table', { leaguename: 'Old League' });
-    expect(deleteS3Spy).toHaveBeenCalledTimes(2);
+    assert.equal(inactiveDeleteRes.statusCode, 200);
+    assert.deepEqual(deleteDdbSpy.mock.calls[0].arguments, ['test-league-table', { leaguename: 'Old League' }]);
+    assert.equal(deleteS3Spy.mock.callCount(), 2);
   });
 });

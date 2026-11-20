@@ -1,5 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { ZodEffects, ZodTypeAny } from 'zod';
+import { ZodType } from 'zod';
 import config from '../../lib/config';
 import { AuthorizerContextSchema } from '../types';
 
@@ -40,7 +40,7 @@ export interface MethodHandlers {
   PutHandler?: (body: any, queryStringParameters: any, event: APIGatewayProxyEvent) => Promise<APIGatewayProxyResult>;
 }
 
-export const crudHandler = async (event: APIGatewayProxyEvent, itemSchema: ZodEffects<ZodTypeAny>, methodHandlers: MethodHandlers): Promise<APIGatewayProxyResult> => {
+export const crudHandler = async (event: APIGatewayProxyEvent, itemSchema: ZodType, methodHandlers: MethodHandlers): Promise<APIGatewayProxyResult> => {
   try {
     const { body, httpMethod, queryStringParameters } = event;
     const parsedQueryStringParams = (queryStringParameters) ? itemSchema.safeParse(queryStringParameters) : null;

@@ -142,7 +142,6 @@ cdk.out
 *.sw?
 
 *.js
-!jest.config.js
 *.d.ts
 !vite-env.d.ts
 node_modules
