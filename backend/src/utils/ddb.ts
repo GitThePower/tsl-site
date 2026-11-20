@@ -27,7 +27,7 @@ const getResponse = (statusCode: number, body: string): APIGatewayProxyResult =>
 export const createItem = async (tableName: string, data: any): Promise<void> => {
   const params = {
     TableName: tableName,
-    Item: marshall(data),
+    Item: marshall(data, { removeUndefinedValues: true }),
   };
   const client = getDdbClient();
   await client.send(new PutItemCommand(params));
@@ -48,23 +48,29 @@ export const getItem = async (tableName: string, query: any): Promise<{ Item: Re
 
 // **Update**
 export const updateItem = async (tableName: string, query: any, data: any): Promise<{ Item: Record<string, any> | null }> => {
-  const update = data;
-  let UpdateExpression = 'SET';
-  Object.keys(update).map((key) => {
-    UpdateExpression = UpdateExpression + ` ${key} = :${key},`;
-  });
-  UpdateExpression = UpdateExpression.slice(0, -1);
+  const entries = Object.entries(data).filter(([, value]) => value !== undefined);
+  if (entries.length === 0) {
+    throw new Error('No defined attributes provided for update');
+  }
 
-  const expressionAttributeValues = Object.keys(update).reduce((prev: Record<string, any>, curr: string) => {
-    prev[`:${curr}`] = update[curr];
-    return prev;
-  }, {} as Record<string, any>);
-  const ExpressionAttributeValues = marshall(expressionAttributeValues);
+  const expressionAttributeNames: Record<string, string> = {};
+  const expressionAttributeValues: Record<string, any> = {};
+  const setClauses: string[] = [];
+
+  for (const [key, value] of entries) {
+    expressionAttributeNames[`#${key}`] = key;
+    expressionAttributeValues[`:${key}`] = value;
+    setClauses.push(`#${key} = :${key}`);
+  }
+
+  const UpdateExpression = `SET ${setClauses.join(', ')}`;
+  const ExpressionAttributeValues = marshall(expressionAttributeValues, { removeUndefinedValues: true });
 
   const params = {
     TableName: tableName,
     Key: marshall(query),
     UpdateExpression,
+    ExpressionAttributeNames: expressionAttributeNames,
     ExpressionAttributeValues,
     ReturnValues: 'ALL_NEW' as ReturnValue,
   };

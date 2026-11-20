@@ -161,6 +161,9 @@ export const getMoxfieldContent = async (url: string, options?: FetchMoxfieldOpt
         }
         return MoxfieldContentSchema.parse(await result.json());
       } catch (e) {
+        if (e instanceof z.ZodError) {
+          throw e;
+        }
         lastError = e instanceof Error ? e : new Error(JSON.stringify(e));
         if (attempt >= maxRetries) {
           console.warn(

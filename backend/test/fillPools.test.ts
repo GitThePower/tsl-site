@@ -184,6 +184,78 @@ describe('fillPools and LeagueSchema', () => {
     expect(fetchMock.mock.calls[2][0]).toContain('api.scrapingant.com');
   });
 
+  it('getMoxfieldContent should parse cards with omitted mana_cost and optional card_faces', async () => {
+    const mockDeckResponse = {
+      boards: {
+        mainboard: {
+          cards: {
+            dfc1: {
+              card: {
+                card_faces: [
+                  { colors: ['B'], mana_cost: '{1}{B}' },
+                  { colors: ['B'], mana_cost: '' },
+                ],
+                cmc: 2,
+                colors: [],
+                name: 'Valakut Awakening // Valakut Stoneforge',
+                scryfall_id: 'dfc-id',
+                set_name: 'ZNR',
+              },
+              quantity: 1,
+            },
+            land1: {
+              card: {
+                colors: [],
+                name: 'Command Tower',
+              },
+              quantity: 1,
+            },
+          },
+          count: 2,
+        },
+        maybeboard: { cards: {}, count: 0 },
+        sideboard: { cards: {}, count: 0 },
+      },
+    };
+
+    const fetchMock = jest.fn().mockResolvedValueOnce({
+      json: async () => mockDeckResponse,
+      ok: true,
+      status: 200,
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await getMoxfieldContent('https://moxfield.com/decks/testDeckId', {
+      credentials: [{ apiKey: 'sa-key', provider: 'scraperapi' }],
+      retryDelayMs: 1,
+    });
+
+    expect(result.boards.mainboard.cards.land1.card.mana_cost).toBeUndefined();
+    expect(result.boards.mainboard.cards.dfc1.card.card_faces).toHaveLength(2);
+  });
+
+  it('getMoxfieldContent should fail fast on ZodError without retrying or failing over', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      json: async () => ({ unexpected: 'shape' }),
+      ok: true,
+      status: 200,
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(
+      getMoxfieldContent('https://moxfield.com/decks/testDeckId', {
+        credentials: [
+          { apiKey: 'sa-key', provider: 'scraperapi' },
+          { apiKey: 'do-key', provider: 'scrapedo' },
+        ],
+        maxRetries: 2,
+        retryDelayMs: 1,
+      }),
+    ).rejects.toThrow();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('formatCardPool should ignore basic lands and combine quantities within boards', () => {
     const mockMoxfieldPool: MoxfieldPool = {
       user1: {

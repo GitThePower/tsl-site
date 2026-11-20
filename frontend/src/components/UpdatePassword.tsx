@@ -1,6 +1,6 @@
 import { Button, TextField } from '@mui/material';
 import { useContext, useState } from 'react';
-import api from '../actions/api.ts';
+import api, { ApiError } from '../actions/api.ts';
 import { AppContext } from '../App.tsx';
 
 const UpdatePassword = () => {
@@ -10,27 +10,29 @@ const UpdatePassword = () => {
   const [currPassword, setCurrPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
 
-
   const handleChangePasswordButtonClick = async () => {
+    if (!currPassword || !nextPassword) {
+      setChangePasswordMsg('Please enter both your current and new password.');
+      return;
+    }
+
     setIsLoading(true);
+    setChangePasswordMsg('');
     try {
       const username = session.username ?? '';
-      const currUser = await api.getUser(username);
-      if (currUser?.password !== currPassword) {
+      await api.updateUser(username, {
+        currentPassword: currPassword,
+        password: nextPassword,
+      });
+      setCurrPassword('');
+      setNextPassword('');
+      setChangePasswordMsg('Successfully changed password!');
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 403) {
         setChangePasswordMsg('Password does not match existing.');
       } else {
-        const update = {
-          password: nextPassword,
-        };
-        const response = await api.updateUser(username, update);
-        if (response?.password === nextPassword) {
-          setChangePasswordMsg('Successfully changed password!');
-        } else {
-          setChangePasswordMsg('Failed to change password.');
-        }
+        setChangePasswordMsg('Failed to change password.');
       }
-    } catch (e) {
-      setChangePasswordMsg('Failed to change password.');
       console.error(e);
     } finally {
       setIsLoading(false);
@@ -71,6 +73,6 @@ const UpdatePassword = () => {
       )}
     </form>
   );
-}
+};
 
 export default UpdatePassword;

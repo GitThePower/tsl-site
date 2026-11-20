@@ -20,16 +20,25 @@ export const MagicCardPoolSchema = z.object({
 });
 export type MagicCardPool = z.infer<typeof MagicCardPoolSchema>;
 
+const MoxfieldCardFaceSchema = z.object({
+  colors: z.array(z.string()).nullish(),
+  mana_cost: z.string().nullish(),
+});
+
+const MoxfieldCardDetailsSchema = z.object({
+  card_faces: z.array(MoxfieldCardFaceSchema).nullish(),
+  cmc: z.number().nullish(),
+  colors: z.array(z.string()).nullish(),
+  mana_cost: z.string().nullish(),
+  name: z.string(),
+  scryfall_id: z.string().nullish(),
+  set_name: z.string().nullish(),
+});
+export type MoxfieldCardDetails = z.infer<typeof MoxfieldCardDetailsSchema>;
+
 const MoxfieldCardSchema = z.object({
+  card: MoxfieldCardDetailsSchema,
   quantity: z.number(),
-  card: z.object({
-    cmc: z.number(),
-    colors: z.array(z.string()),
-    mana_cost: z.string(),
-    name: z.string(),
-    scryfall_id: z.string().optional(),
-    set_name: z.string(),
-  }),
 });
 const MoxfieldBoardSchema = z.object({
   count: z.number(),
@@ -50,11 +59,30 @@ export const MoxfieldPoolSchema = z.record(z.string(), z.object({
 }));
 export type MoxfieldPool = z.infer<typeof MoxfieldPoolSchema>;
 
+export const AuthorizerContextSchema = z.object({
+  isAdmin: z.string(),
+  username: z.string(),
+});
+export type AuthorizerContext = z.infer<typeof AuthorizerContextSchema>;
+
+export const AuthorizerLambdaEnvSchema = z.object({
+  ADMIN_API_KEY: z.string().optional(),
+  SESSION_TABLE_NAME: z.string(),
+  USER_TABLE_NAME: z.string(),
+});
+export type AuthorizerLambdaEnv = z.infer<typeof AuthorizerLambdaEnvSchema>;
+
 export const ResourceLambdaEnvSchema = z.object({
   DB_TABLE_NAME: z.string(),
   S3_BUCKET_NAME: z.string().optional(),
 });
 export type ResourceLambdaEnv = z.infer<typeof ResourceLambdaEnvSchema>;
+
+export const SessionLambdaEnvSchema = z.object({
+  DB_TABLE_NAME: z.string(),
+  USER_TABLE_NAME: z.string(),
+});
+export type SessionLambdaEnv = z.infer<typeof SessionLambdaEnvSchema>;
 
 export const GatewayProviderSchema = z.enum([
   'scrapedo',
@@ -135,13 +163,20 @@ export const SessionSchema = z.object({
   );
 export type Session = z.infer<typeof SessionSchema>;
 
+export const UserRoleSchema = z.enum(['admin', 'player']);
+export type UserRole = z.infer<typeof UserRoleSchema>;
+
+export const UserLeagueSchema = z.object({
+  decklistUrl: z.string(),
+  leaguename: z.string(),
+});
+export type UserLeague = z.infer<typeof UserLeagueSchema>;
+
 export const UserSchema = z.object({
-  username: z.string(),
+  leagues: z.array(UserLeagueSchema),
   password: z.string(),
-  leagues: z.array(z.object({
-    leaguename: z.string(),
-    decklistUrl: z.string(),
-  })),
+  roles: z.array(UserRoleSchema),
+  username: z.string(),
 })
   .partial()
   .refine(
@@ -150,3 +185,31 @@ export const UserSchema = z.object({
     { message: 'One of the fields must be defined' },
   );
 export type User = z.infer<typeof UserSchema>;
+
+export const CreateUserSchema = z.object({
+  leagues: z.array(UserLeagueSchema).optional(),
+  password: z.string().min(1),
+  roles: z.array(UserRoleSchema).optional(),
+  username: z.string().min(1),
+});
+export type CreateUserInput = z.infer<typeof CreateUserSchema>;
+
+export const LoginRequestSchema = z.object({
+  password: z.string().min(1),
+  username: z.string().min(1),
+});
+export type LoginRequest = z.infer<typeof LoginRequestSchema>;
+
+export const UpdateUserBodySchema = z.object({
+  currentPassword: z.string(),
+  leagues: z.array(UserLeagueSchema),
+  password: z.string().min(1),
+  roles: z.array(UserRoleSchema),
+})
+  .partial()
+  .refine(
+    (obj: Record<string | number | symbol, unknown>) =>
+      Object.values(obj).some(v => v !== undefined),
+    { message: 'One of the fields must be defined' },
+  );
+export type UpdateUserInput = z.infer<typeof UpdateUserBodySchema>;
