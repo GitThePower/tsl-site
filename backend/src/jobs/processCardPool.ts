@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   MagicCard,
   MagicCardPool,
+  MoxfieldCardDetails,
   MoxfieldPool,
   ProcessCardPoolLambdaEnvSchema,
   RawPoolEnvelopeSchema,
@@ -34,6 +35,31 @@ export const normalizeCountsKey = (key: string): string => {
   return `counts/${stripped}`;
 };
 
+export const resolveCardManaCost = (card: MoxfieldCardDetails): string => {
+  if (card.mana_cost && card.mana_cost.trim().length > 0) {
+    return card.mana_cost.trim();
+  }
+  const faceCosts = (card.card_faces ?? [])
+    .map((face) => face.mana_cost?.trim() ?? '')
+    .filter((cost) => cost.length > 0);
+  return faceCosts.join(' // ');
+};
+
+export const resolveCardColors = (card: MoxfieldCardDetails): string[] => {
+  if (card.colors && card.colors.length > 0) {
+    return card.colors;
+  }
+  const faceColors = new Set<string>();
+  for (const face of card.card_faces ?? []) {
+    for (const color of face.colors ?? []) {
+      faceColors.add(color);
+    }
+  }
+  return Array.from(faceColors).sort(
+    (a, b) => (WUBRG_INDEX[a] ?? 99) - (WUBRG_INDEX[b] ?? 99),
+  );
+};
+
 export const formatCardPool = (leaguePool: MoxfieldPool): Record<string, MagicCardPool> => {
   const searchResults: Record<string, MagicCardPool> = {};
   Object.keys(leaguePool).forEach((username) => {
@@ -47,24 +73,26 @@ export const formatCardPool = (leaguePool: MoxfieldPool): Record<string, MagicCa
         if (BASIC_LAND_NAMES.includes(cardName)) {
           return;
         }
+        const cardColors = resolveCardColors(card.card);
+        const manaCost = resolveCardManaCost(card.card);
         const mbQty = boardName === 'mainboard' ? card.quantity : 0;
-        if (boardName === 'mainboard' && card.card.colors) {
-          card.card.colors.forEach((c) => userColors.add(c));
+        if (boardName === 'mainboard') {
+          cardColors.forEach((c) => userColors.add(c));
         }
         if (cardName in userCardList) {
-          if (!userCardList[cardName].colors && card.card.colors) {
-            userCardList[cardName].colors = card.card.colors;
+          if ((!userCardList[cardName].colors || userCardList[cardName].colors.length === 0) && cardColors.length > 0) {
+            userCardList[cardName].colors = cardColors;
           }
           userCardList[cardName].mainboardQuantity = (userCardList[cardName].mainboardQuantity || 0) + mbQty;
           userCardList[cardName].quantity += card.quantity;
         } else {
           userCardList[cardName] = {
-            colors: card.card.colors,
+            colors: cardColors,
             mainboardQuantity: mbQty,
-            mana_cost: card.card.mana_cost,
+            mana_cost: manaCost,
             name: cardName,
             quantity: card.quantity,
-            scryfall_id: card.card?.scryfall_id,
+            scryfall_id: card.card.scryfall_id ?? undefined,
           };
         }
       });

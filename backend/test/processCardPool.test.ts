@@ -101,6 +101,81 @@ describe('processCardPool job', () => {
     expect(pool.user1.colors).toEqual(['W', 'R']);
   });
 
+  it('formatCardPool should fall back to card_faces and empty mana_cost when top-level mana_cost or colors are omitted', () => {
+    const mockMoxfieldPool: MoxfieldPool = {
+      user1: {
+        decklistUrl: 'https://moxfield.com/decks/dfc-test',
+        moxfieldContent: {
+          boards: {
+            mainboard: {
+              cards: {
+                dfcTransform: {
+                  card: {
+                    card_faces: [
+                      { colors: ['U'], mana_cost: '{1}{U}' },
+                      { colors: ['U'], mana_cost: '' },
+                    ],
+                    colors: [],
+                    name: 'Delver of Secrets // Insectile Aberration',
+                    scryfall_id: null,
+                  },
+                  quantity: 2,
+                },
+                mdfcDual: {
+                  card: {
+                    card_faces: [
+                      { colors: ['R'], mana_cost: '{2}{R}' },
+                      { colors: ['W'], mana_cost: '{1}{W}' },
+                    ],
+                    name: 'Shatterskull Smashing // Shatterskull, the Hammer Pass',
+                  },
+                  quantity: 1,
+                },
+                nonBasicLand: {
+                  card: {
+                    colors: [],
+                    name: 'Command Tower',
+                  },
+                  quantity: 1,
+                },
+              },
+              count: 4,
+            },
+            maybeboard: { cards: {}, count: 0 },
+            sideboard: { cards: {}, count: 0 },
+          },
+        },
+      },
+    };
+
+    const pool = formatCardPool(mockMoxfieldPool);
+    expect(pool.user1.cardList['Delver of Secrets // Insectile Aberration']).toEqual({
+      colors: ['U'],
+      mainboardQuantity: 2,
+      mana_cost: '{1}{U}',
+      name: 'Delver of Secrets // Insectile Aberration',
+      quantity: 2,
+      scryfall_id: undefined,
+    });
+    expect(pool.user1.cardList['Shatterskull Smashing // Shatterskull, the Hammer Pass']).toEqual({
+      colors: ['W', 'R'],
+      mainboardQuantity: 1,
+      mana_cost: '{2}{R} // {1}{W}',
+      name: 'Shatterskull Smashing // Shatterskull, the Hammer Pass',
+      quantity: 1,
+      scryfall_id: undefined,
+    });
+    expect(pool.user1.cardList['Command Tower']).toEqual({
+      colors: [],
+      mainboardQuantity: 1,
+      mana_cost: '',
+      name: 'Command Tower',
+      quantity: 1,
+      scryfall_id: undefined,
+    });
+    expect(pool.user1.colors).toEqual(['W', 'U', 'R']);
+  });
+
   it('handler should read raw envelope from S3, format pool, and write to S3 with metadata', async () => {
     const rawEnvelope: RawPoolEnvelope = {
       cardCountsKey: 'counts-uuid',

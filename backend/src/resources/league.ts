@@ -17,8 +17,30 @@ import {
   listItems,
   updateItem,
 } from '../utils/ddb';
-import { MethodHandlers, crudHandler, getResponse } from '../utils/lambda';
+import {
+  MethodHandlers,
+  crudHandler,
+  getAuthorizerContext,
+  getResponse,
+} from '../utils/lambda';
 import { deleteObject, getObject, putObject } from '../utils/s3';
+
+const deactivateOtherLeagues = async (tableName: string, excludeLeaguename?: string): Promise<void> => {
+  const { Items } = await listItems(tableName);
+  if (!Items) {
+    return;
+  }
+  for (const item of Items) {
+    const existingLeague = LeagueSchema.parse(item);
+    if (
+      existingLeague.isActive === true &&
+      existingLeague.leaguename &&
+      existingLeague.leaguename !== excludeLeaguename
+    ) {
+      await updateItem(tableName, { leaguename: existingLeague.leaguename }, { isActive: false });
+    }
+  }
+};
 
 const hydrateLeagueS3Data = async (league: League, bucketName?: string): Promise<League> => {
   let cardPool = {} as Record<string, MagicCardPool>;
@@ -51,8 +73,24 @@ const hydrateLeagueS3Data = async (league: League, bucketName?: string): Promise
 export const handler = async (event: APIGatewayProxyEvent) => {
   const { DB_TABLE_NAME, S3_BUCKET_NAME } = ResourceLambdaEnvSchema.parse(process.env);
   const methodHandlers: MethodHandlers = {
-    DeleteHandler: async (queryStringParameter: any) => {
-      const { Item } = await deleteItem(DB_TABLE_NAME, queryStringParameter.data);
+    DeleteHandler: async (queryStringParameters: League, reqEvent: APIGatewayProxyEvent) => {
+      if (!getAuthorizerContext(reqEvent).isAdmin) {
+        return getResponse(403, 'Forbidden');
+      }
+      if (!queryStringParameters.leaguename) {
+        return getResponse(400, 'QueryStringParametersErr: leaguename is required');
+      }
+
+      const { Item: existingItem } = await getItem(DB_TABLE_NAME, { leaguename: queryStringParameters.leaguename });
+      if (!existingItem) {
+        return getResponse(404, 'Not found');
+      }
+      const existingLeague = LeagueSchema.parse(existingItem);
+      if (existingLeague.isActive === true) {
+        return getResponse(400, 'Cannot delete the active league');
+      }
+
+      const { Item } = await deleteItem(DB_TABLE_NAME, { leaguename: queryStringParameters.leaguename });
       if (Item) {
         let league = LeagueSchema.parse(Item);
         if (league.cardPoolKey) {
@@ -80,8 +118,11 @@ export const handler = async (event: APIGatewayProxyEvent) => {
       }
       return getResponse(404, 'Not found');
     },
-    GetHandler: async (queryStringParameters: any) => {
-      const { Item } = await getItem(DB_TABLE_NAME, queryStringParameters);
+    GetHandler: async (queryStringParameters: League) => {
+      if (!queryStringParameters.leaguename) {
+        return getResponse(400, 'QueryStringParametersErr: leaguename is required');
+      }
+      const { Item } = await getItem(DB_TABLE_NAME, { leaguename: queryStringParameters.leaguename });
       if (Item) {
         const league: League = await hydrateLeagueS3Data(LeagueSchema.parse(Item), S3_BUCKET_NAME);
         return getResponse(200, JSON.stringify(league));
@@ -90,19 +131,38 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     },
     ListHandler: async () => {
       const { Items } = await listItems(DB_TABLE_NAME);
-      if (Items) {
-        const leaguePromises = Items.map((Item) => hydrateLeagueS3Data(LeagueSchema.parse(Item), S3_BUCKET_NAME));
-        const leagues: League[] = await Promise.all(leaguePromises);
-        return getResponse(200, JSON.stringify(leagues));
-      }
-      return getResponse(404, 'Not found');
+      const leaguePromises = (Items ?? []).map((Item) =>
+        hydrateLeagueS3Data(LeagueSchema.parse(Item), S3_BUCKET_NAME),
+      );
+      const leagues: League[] = await Promise.all(leaguePromises);
+      return getResponse(200, JSON.stringify(leagues));
     },
-    PostHandler: async (body: any) => {
-      const league = LeagueSchema.parse(body);
-      if (!league.leaguename) throw new Error('New league must have a leaguename!');
-      const { cardCounts, cardPool, ...leagueValues } = league;
-      leagueValues.cardPoolKey = `pools/${v4()}`;
-      leagueValues.cardCountsKey = `counts/${v4()}`;
+    PostHandler: async (body: League, reqEvent: APIGatewayProxyEvent) => {
+      if (!getAuthorizerContext(reqEvent).isAdmin) {
+        return getResponse(403, 'Forbidden');
+      }
+      const leaguename = body.leaguename?.trim();
+      if (!leaguename) {
+        return getResponse(400, 'New league must have a leaguename');
+      }
+
+      const { Item: existing } = await getItem(DB_TABLE_NAME, { leaguename });
+      if (existing) {
+        return getResponse(409, 'League already exists');
+      }
+
+      if (body.isActive === true) {
+        await deactivateOtherLeagues(DB_TABLE_NAME, leaguename);
+      }
+
+      const leagueValues: League = {
+        cardCountsKey: `counts/${v4()}`,
+        cardPoolKey: `pools/${v4()}`,
+        isActive: body.isActive ?? false,
+        leaguename,
+        poolSyncError: body.poolSyncError ?? false,
+      };
+
       await createItem(DB_TABLE_NAME, leagueValues);
       await putObject({
         Body: JSON.stringify({}),
@@ -114,26 +174,60 @@ export const handler = async (event: APIGatewayProxyEvent) => {
         Bucket: S3_BUCKET_NAME,
         Key: leagueValues.cardCountsKey,
       });
-      return getResponse(200, 'Successful Create!');
+
+      return getResponse(200, JSON.stringify({
+        ...leagueValues,
+        cardCounts: {} as MagicCardCounts,
+        cardCountsKey: '[ HIDDEN ]',
+        cardPool: {} as Record<string, MagicCardPool>,
+        cardPoolKey: '[ HIDDEN ]',
+      }));
     },
-    PutHandler: async (body: any, queryStringParameters: any) => {
-      const leagueQuery = LeagueSchema.parse(queryStringParameters);
-      const leagueUpdate = LeagueSchema.parse(body);
-      const {
-        cardCounts: queryCardCounts,
-        cardCountsKey: queryCardCountsKey,
-        cardPool: queryCardPool,
-        cardPoolKey: queryCardPoolKey,
-        ...leagueQueryValues
-      } = leagueQuery;
+    PutHandler: async (body: League, queryStringParameters: League, reqEvent: APIGatewayProxyEvent) => {
+      if (!getAuthorizerContext(reqEvent).isAdmin) {
+        return getResponse(403, 'Forbidden');
+      }
+      if (!queryStringParameters.leaguename) {
+        return getResponse(400, 'QueryStringParametersErr: leaguename is required');
+      }
+
+      const { Item: existingItem } = await getItem(DB_TABLE_NAME, { leaguename: queryStringParameters.leaguename });
+      if (!existingItem) {
+        return getResponse(404, 'Not found');
+      }
+      const existingLeague = LeagueSchema.parse(existingItem);
+
       const {
         cardCounts: updateCardCounts,
         cardCountsKey: updateCardCountsKey,
         cardPool: updateCardPool,
         cardPoolKey: updateCardPoolKey,
+        leaguename: updateLeaguename,
         ...leagueUpdateValues
-      } = leagueUpdate;
-      const { Item } = await updateItem(DB_TABLE_NAME, leagueQueryValues, leagueUpdateValues);
+      } = body;
+
+      if (Object.keys(leagueUpdateValues).length === 0) {
+        return getResponse(400, 'BodyErr: No updatable fields provided');
+      }
+
+      if (leagueUpdateValues.isActive === true) {
+        await deactivateOtherLeagues(DB_TABLE_NAME, queryStringParameters.leaguename);
+      } else if (leagueUpdateValues.isActive === false && existingLeague.isActive === true) {
+        const { Items } = await listItems(DB_TABLE_NAME);
+        const hasOtherActiveLeague = (Items ?? []).some((item) => {
+          const other = LeagueSchema.parse(item);
+          return other.isActive === true && other.leaguename !== queryStringParameters.leaguename;
+        });
+        if (!hasOtherActiveLeague) {
+          return getResponse(400, 'Cannot deactivate the only active league; activate another league instead');
+        }
+      }
+
+      const { Item } = await updateItem(
+        DB_TABLE_NAME,
+        { leaguename: queryStringParameters.leaguename },
+        leagueUpdateValues,
+      );
       if (Item) {
         const league: League = await hydrateLeagueS3Data(LeagueSchema.parse(Item), S3_BUCKET_NAME);
         return getResponse(200, JSON.stringify(league));

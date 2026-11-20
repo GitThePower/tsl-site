@@ -1,6 +1,7 @@
 const domainName = 'tavernsealedleague.com';
 
 export default {
+  authorizer: 'authorizer',
   domainName,
   domainNameApi: `api.${domainName}`,
   domainNameWww: `www.${domainName}`,

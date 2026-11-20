@@ -27,6 +27,8 @@ const Home = () => {
       try {
         const userResults = await api.listUsers();
         setUsers(userResults);
+      } catch (e) {
+        console.error(e);
       } finally {
         setIsUsersLoading(false);
       }

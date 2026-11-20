@@ -1,4 +1,16 @@
-import { DomainName, EndpointType, IApiKey, IResource, IUsagePlan, LambdaIntegration, Period, RestApi } from 'aws-cdk-lib/aws-apigateway';
+import {
+  AuthorizationType,
+  Cors,
+  DomainName,
+  EndpointType,
+  GatewayResponse,
+  IAuthorizer,
+  IResource,
+  LambdaIntegration,
+  Period,
+  ResponseType,
+  RestApi,
+} from 'aws-cdk-lib/aws-apigateway';
 import { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { AnyPrincipal, Effect, PolicyDocument, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
@@ -12,6 +24,8 @@ interface ApiProps {
   domainCert: ICertificate;
   domainHostedZone: IHostedZone;
 }
+
+export type HttpMethod = 'DELETE' | 'GET' | 'POST' | 'PUT';
 
 export class Api extends RestApi {
 
@@ -48,6 +62,21 @@ export class Api extends RestApi {
       zone: props.domainHostedZone,
     });
 
+    const gatewayCorsHeaders = {
+      'Access-Control-Allow-Headers': "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Session-Id'",
+      'Access-Control-Allow-Origin': `'https://${config.domainName}'`,
+    };
+    new GatewayResponse(scope, `${id}-default-4xx`, {
+      responseHeaders: gatewayCorsHeaders,
+      restApi: this,
+      type: ResponseType.DEFAULT_4XX,
+    });
+    new GatewayResponse(scope, `${id}-default-5xx`, {
+      responseHeaders: gatewayCorsHeaders,
+      restApi: this,
+      type: ResponseType.DEFAULT_5XX,
+    });
+
     const usagePlan = this.addUsagePlan(`${id}-api-usage-plan`, {
       apiStages: [
         {
@@ -74,26 +103,35 @@ export class Api extends RestApi {
     });
   }
 
-  createLambdaBackedResource(resourceName: string, lambda: IFunction): IResource {
+  createLambdaBackedResource(
+    resourceName: string,
+    lambda: IFunction,
+    methodAuthorizers?: Partial<Record<HttpMethod, IAuthorizer>>,
+  ): IResource {
     const resource = this.root.addResource(resourceName);   // creates /{resource} endpoint
     const lambdaIntegration = new LambdaIntegration(lambda, {
       allowTestInvoke: false,
     });
-    resource.addMethod('POST', lambdaIntegration, {         // C
-      apiKeyRequired: true,
-    });
-    resource.addMethod('GET', lambdaIntegration, {          // R
-      apiKeyRequired: true,
-    });
-    resource.addMethod('PUT', lambdaIntegration, {          // U
-      apiKeyRequired: true,
-    });
-    resource.addMethod('DELETE', lambdaIntegration, {       // D
-      apiKeyRequired: true,
-    });
+
+    const getMethodOptions = (method: HttpMethod) => {
+      const authorizer = methodAuthorizers?.[method];
+      return {
+        apiKeyRequired: true,
+        ...(authorizer ? {
+          authorizationType: AuthorizationType.CUSTOM,
+          authorizer,
+        } : {}),
+      };
+    };
+
+    resource.addMethod('POST', lambdaIntegration, getMethodOptions('POST'));         // C
+    resource.addMethod('GET', lambdaIntegration, getMethodOptions('GET'));           // R
+    resource.addMethod('PUT', lambdaIntegration, getMethodOptions('PUT'));           // U
+    resource.addMethod('DELETE', lambdaIntegration, getMethodOptions('DELETE'));     // D
     resource.addCorsPreflight({
+      allowHeaders: [...Cors.DEFAULT_HEADERS, 'X-Session-Id'],
+      allowMethods: ['DELETE', 'GET', 'POST', 'PUT'],
       allowOrigins: [`https://${config.domainName}`, `https://${config.domainNameWww}`],
-      allowMethods: ['POST', 'GET', 'PUT', 'DELETE'],
     });
 
     return resource;

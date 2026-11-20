@@ -1,24 +1,29 @@
 import { Button } from '@mui/material';
 import { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../actions/api';
 import { AppContext } from '../App';
 import { config } from '../../../local-config';
 
 const LogoutButton = () => {
-  const { setSession } = useContext(AppContext);
+  const { session, setCurrentUser, setSession } = useContext(AppContext);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogoutButtonClick = () => {
+  const handleLogoutButtonClick = async () => {
     setIsLoading(true);
     try {
-      localStorage.removeItem(config.sessionIdLocalStorageKey);
-      setSession({});
-      navigate('/');
+      if (session.sessionid) {
+        await api.deleteSession(session.sessionid);
+      }
     } catch (e) {
       console.error(e);
     } finally {
+      localStorage.removeItem(config.sessionIdLocalStorageKey);
+      setSession({});
+      setCurrentUser({});
       setIsLoading(false);
+      navigate('/');
     }
   };
 
@@ -26,12 +31,13 @@ const LogoutButton = () => {
     <Button
       variant='contained'
       color='primary'
-      type='submit'
+      type='button'
+      disabled={isLoading}
       onClick={handleLogoutButtonClick}
     >
       {isLoading ? 'Logging out...' : 'Logout'}
     </Button>
   );
-}
+};
 
 export default LogoutButton;

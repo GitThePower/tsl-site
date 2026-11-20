@@ -1,4 +1,5 @@
 import { Duration, Stack, StackProps } from 'aws-cdk-lib';
+import { IdentitySource, RequestAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { EventType } from 'aws-cdk-lib/aws-s3';
 import { LambdaDestination } from 'aws-cdk-lib/aws-s3-notifications';
@@ -11,6 +12,7 @@ import {
   ProcessCardPoolLambdaEnv,
   ProcessDeckColorsLambdaEnv,
   ResourceLambdaEnv,
+  SessionLambdaEnv,
 } from '../src/types';
 import { Api } from './api';
 import config from './config';
@@ -36,41 +38,90 @@ export class TslDotComStack extends Stack {
       domainHostedZone: website.hostedZone,
     });
 
-    const createRestfulResource = (resource: string, pk: string, extendedEnv: Record<string, string>) => {
-      const table = new DynamoDBTable(this, `${id}-${resource}-table`, {
+    const createResourceTable = (resource: string, pk: string) => {
+      return new DynamoDBTable(this, `${id}-${resource}-table`, {
         partitionKey: {
           name: pk,
           type: AttributeType.STRING,
         },
       });
-      const lambdaEnv: ResourceLambdaEnv = {
-        DB_TABLE_NAME: table.tableName,
-        ...extendedEnv,
-      };
-      const lambdaRole = new LambdaRole(this, `${id}-${resource}-role`);
-      const lambda = new LambdaFunction(this, `${id}-${resource}-accessor`, {
-        entry: path.join(__dirname, '..', 'src', 'resources', `${resource}.ts`),
-        environment: lambdaEnv,
-        role: lambdaRole,
-      });
-      table.grantFullAccess(lambdaRole);
-      restApi.createLambdaBackedResource(resource, lambda);
-
-      return {
-        lambdaRole,
-        table,
-      };
     };
 
     const leagueDataBucket = new S3(this, `${id}-${config.resource_league}`.toLowerCase());
-    const leagueResource = createRestfulResource(config.resource_league, config.resource_league_pk, {
-      S3_BUCKET_NAME: leagueDataBucket.bucketName,
+    const leagueTable = createResourceTable(config.resource_league, config.resource_league_pk);
+    const sessionTable = createResourceTable(config.resource_session, config.resource_session_pk);
+    const userTable = createResourceTable(config.resource_user, config.resource_user_pk);
+
+    const authorizerLambdaRole = new LambdaRole(this, `${id}-${config.authorizer}-role`);
+    const authorizerLambdaEnv: Record<string, string> = {
+      SESSION_TABLE_NAME: sessionTable.tableName,
+      USER_TABLE_NAME: userTable.tableName,
+      ...(props.apiKeyValues.length > 1 ? { ADMIN_API_KEY: props.apiKeyValues[0] } : {}),
+    };
+    const authorizerLambda = new LambdaFunction(this, `${id}-${config.authorizer}-executor`, {
+      entry: path.join(__dirname, '..', 'src', 'authorizer', 'index.ts'),
+      environment: authorizerLambdaEnv,
+      role: authorizerLambdaRole,
     });
-    leagueDataBucket.grantReadWrite(leagueResource.lambdaRole);
+    sessionTable.grantReadData(authorizerLambdaRole);
+    userTable.grantReadData(authorizerLambdaRole);
 
-    createRestfulResource(config.resource_session, config.resource_session_pk, {});
+    const requestAuthorizer = new RequestAuthorizer(this, `${id}-request-authorizer`, {
+      handler: authorizerLambda,
+      identitySources: [IdentitySource.header('X-Api-Key')],
+      resultsCacheTtl: Duration.seconds(0),
+    });
 
-    const userResource = createRestfulResource(config.resource_user, config.resource_user_pk, {});
+    const leagueLambdaEnv: ResourceLambdaEnv = {
+      DB_TABLE_NAME: leagueTable.tableName,
+      S3_BUCKET_NAME: leagueDataBucket.bucketName,
+    };
+    const leagueLambdaRole = new LambdaRole(this, `${id}-${config.resource_league}-role`);
+    const leagueLambda = new LambdaFunction(this, `${id}-${config.resource_league}-accessor`, {
+      entry: path.join(__dirname, '..', 'src', 'resources', `${config.resource_league}.ts`),
+      environment: leagueLambdaEnv,
+      role: leagueLambdaRole,
+    });
+    leagueTable.grantFullAccess(leagueLambdaRole);
+    leagueDataBucket.grantReadWrite(leagueLambdaRole);
+    restApi.createLambdaBackedResource(config.resource_league, leagueLambda, {
+      DELETE: requestAuthorizer,
+      POST: requestAuthorizer,
+      PUT: requestAuthorizer,
+    });
+
+    const sessionLambdaEnv: SessionLambdaEnv = {
+      DB_TABLE_NAME: sessionTable.tableName,
+      USER_TABLE_NAME: userTable.tableName,
+    };
+    const sessionLambdaRole = new LambdaRole(this, `${id}-${config.resource_session}-role`);
+    const sessionLambda = new LambdaFunction(this, `${id}-${config.resource_session}-accessor`, {
+      entry: path.join(__dirname, '..', 'src', 'resources', `${config.resource_session}.ts`),
+      environment: sessionLambdaEnv,
+      role: sessionLambdaRole,
+    });
+    sessionTable.grantFullAccess(sessionLambdaRole);
+    userTable.grantReadWriteData(sessionLambdaRole);
+    restApi.createLambdaBackedResource(config.resource_session, sessionLambda, {
+      DELETE: requestAuthorizer,
+      PUT: requestAuthorizer,
+    });
+
+    const userLambdaEnv: ResourceLambdaEnv = {
+      DB_TABLE_NAME: userTable.tableName,
+    };
+    const userLambdaRole = new LambdaRole(this, `${id}-${config.resource_user}-role`);
+    const userLambda = new LambdaFunction(this, `${id}-${config.resource_user}-accessor`, {
+      entry: path.join(__dirname, '..', 'src', 'resources', `${config.resource_user}.ts`),
+      environment: userLambdaEnv,
+      role: userLambdaRole,
+    });
+    userTable.grantFullAccess(userLambdaRole);
+    restApi.createLambdaBackedResource(config.resource_user, userLambda, {
+      DELETE: requestAuthorizer,
+      POST: requestAuthorizer,
+      PUT: requestAuthorizer,
+    });
 
     const gatewaySecret = new Secret(this, `${id}-gateway-secret`, {
       secretName: config.gateway_secret_name,
@@ -80,9 +131,9 @@ export class TslDotComStack extends Stack {
       GATEWAY_PROVIDER: 'scraperapi',
       GATEWAY_SECRET_NAME: config.gateway_secret_name,
       LEAGUE_BUCKET_NAME: leagueDataBucket.bucketName,
-      LEAGUE_TABLE_NAME: leagueResource.table.tableName,
+      LEAGUE_TABLE_NAME: leagueTable.tableName,
       REQUEST_DELAY_MS: '2500',
-      USER_TABLE_NAME: userResource.table.tableName,
+      USER_TABLE_NAME: userTable.tableName,
     };
     const fillPoolsLambdaRole = new LambdaRole(this, `${id}-${config.job_fillPools}-role`);
     const fillPoolsLambda = new LambdaFunction(this, `${id}-${config.job_fillPools}-executor`, {
@@ -92,8 +143,8 @@ export class TslDotComStack extends Stack {
       timeout: Duration.minutes(5),
     });
     leagueDataBucket.grantPut(fillPoolsLambdaRole);
-    leagueResource.table.grantReadWriteData(fillPoolsLambdaRole);
-    userResource.table.grantReadData(fillPoolsLambdaRole);
+    leagueTable.grantReadWriteData(fillPoolsLambdaRole);
+    userTable.grantReadData(fillPoolsLambdaRole);
     gatewaySecret.grantRead(fillPoolsLambdaRole);
 
     new CronJob(this, `${id}-${config.job_fillPools}-schedule`, {
@@ -107,7 +158,7 @@ export class TslDotComStack extends Stack {
 
     const processCardPoolLambdaEnv: ProcessCardPoolLambdaEnv = {
       LEAGUE_BUCKET_NAME: leagueDataBucket.bucketName,
-      LEAGUE_TABLE_NAME: leagueResource.table.tableName,
+      LEAGUE_TABLE_NAME: leagueTable.tableName,
     };
     const processCardPoolLambdaRole = new LambdaRole(this, `${id}-${config.job_processCardPool}-role`);
     const processCardPoolLambda = new LambdaFunction(this, `${id}-${config.job_processCardPool}-executor`, {
@@ -117,7 +168,7 @@ export class TslDotComStack extends Stack {
       timeout: Duration.minutes(1),
     });
     leagueDataBucket.grantReadWrite(processCardPoolLambdaRole);
-    leagueResource.table.grantWriteData(processCardPoolLambdaRole);
+    leagueTable.grantWriteData(processCardPoolLambdaRole);
 
     leagueDataBucket.addEventNotification(
       EventType.OBJECT_CREATED,
@@ -130,7 +181,7 @@ export class TslDotComStack extends Stack {
 
     const processDeckColorsLambdaEnv: ProcessDeckColorsLambdaEnv = {
       LEAGUE_BUCKET_NAME: leagueDataBucket.bucketName,
-      LEAGUE_TABLE_NAME: leagueResource.table.tableName,
+      LEAGUE_TABLE_NAME: leagueTable.tableName,
     };
     const processDeckColorsLambdaRole = new LambdaRole(this, `${id}-${config.job_processDeckColors}-role`);
     const processDeckColorsLambda = new LambdaFunction(this, `${id}-${config.job_processDeckColors}-executor`, {
@@ -140,7 +191,7 @@ export class TslDotComStack extends Stack {
       timeout: Duration.minutes(1),
     });
     leagueDataBucket.grantReadWrite(processDeckColorsLambdaRole);
-    leagueResource.table.grantWriteData(processDeckColorsLambdaRole);
+    leagueTable.grantWriteData(processDeckColorsLambdaRole);
 
     leagueDataBucket.addEventNotification(
       EventType.OBJECT_CREATED,
@@ -152,7 +203,7 @@ export class TslDotComStack extends Stack {
 
     const processCardCountsLambdaEnv: ProcessCardCountsLambdaEnv = {
       LEAGUE_BUCKET_NAME: leagueDataBucket.bucketName,
-      LEAGUE_TABLE_NAME: leagueResource.table.tableName,
+      LEAGUE_TABLE_NAME: leagueTable.tableName,
     };
     const processCardCountsLambdaRole = new LambdaRole(this, `${id}-${config.job_processCardCounts}-role`);
     const processCardCountsLambda = new LambdaFunction(this, `${id}-${config.job_processCardCounts}-executor`, {
@@ -162,7 +213,7 @@ export class TslDotComStack extends Stack {
       timeout: Duration.minutes(1),
     });
     leagueDataBucket.grantReadWrite(processCardCountsLambdaRole);
-    leagueResource.table.grantReadWriteData(processCardCountsLambdaRole);
+    leagueTable.grantReadWriteData(processCardCountsLambdaRole);
 
     leagueDataBucket.addEventNotification(
       EventType.OBJECT_CREATED,
@@ -173,4 +224,3 @@ export class TslDotComStack extends Stack {
     );
   }
 }
-
