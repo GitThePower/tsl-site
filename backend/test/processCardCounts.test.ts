@@ -1,3 +1,5 @@
+import * as assert from 'node:assert/strict';
+import { after, afterEach, beforeEach, describe, it, mock } from 'node:test';
 import { S3Event } from 'aws-lambda';
 import {
   formatCardCounts,
@@ -17,16 +19,20 @@ describe('processCardCounts job', () => {
       LEAGUE_BUCKET_NAME: 'test-league-bucket',
       LEAGUE_TABLE_NAME: 'test-league-table',
     };
-    jest.restoreAllMocks();
+    mock.restoreAll();
   });
 
-  afterAll(() => {
+  afterEach(() => {
+    mock.restoreAll();
+  });
+
+  after(() => {
     process.env = originalEnv;
   });
 
   it('normalizeCountsKey should add counts/ prefix if missing', () => {
-    expect(normalizeCountsKey('counts-123')).toBe('counts/counts-123');
-    expect(normalizeCountsKey('counts/counts-123')).toBe('counts/counts-123');
+    assert.equal(normalizeCountsKey('counts-123'), 'counts/counts-123');
+    assert.equal(normalizeCountsKey('counts/counts-123'), 'counts/counts-123');
   });
 
   it('formatCardCounts should aggregate card quantities across all users and sort alphabetically', () => {
@@ -74,17 +80,17 @@ describe('processCardCounts job', () => {
     const counts = formatCardCounts(mockCardPool);
     const parsedCounts = MagicCardCountsSchema.parse(counts);
 
-    expect(Object.keys(parsedCounts)).toEqual([
+    assert.deepEqual(Object.keys(parsedCounts), [
       'Counterspell',
       'Dark Ritual',
       'Lightning Bolt',
     ]);
-    expect(parsedCounts['Counterspell'].quantity).toBe(2);
-    expect(parsedCounts['Counterspell'].mainboardQuantity).toBe(2);
-    expect(parsedCounts['Dark Ritual'].quantity).toBe(4);
-    expect(parsedCounts['Dark Ritual'].mainboardQuantity).toBe(4);
-    expect(parsedCounts['Lightning Bolt'].quantity).toBe(4);
-    expect(parsedCounts['Lightning Bolt'].mainboardQuantity).toBe(3);
+    assert.equal(parsedCounts['Counterspell'].quantity, 2);
+    assert.equal(parsedCounts['Counterspell'].mainboardQuantity, 2);
+    assert.equal(parsedCounts['Dark Ritual'].quantity, 4);
+    assert.equal(parsedCounts['Dark Ritual'].mainboardQuantity, 4);
+    assert.equal(parsedCounts['Lightning Bolt'].quantity, 4);
+    assert.equal(parsedCounts['Lightning Bolt'].mainboardQuantity, 3);
   });
 
   it('handler should read pool from S3, aggregate counts, write to S3, and update DynamoDB', async () => {
@@ -103,7 +109,7 @@ describe('processCardCounts job', () => {
       },
     };
 
-    jest.spyOn(s3Utils, 'getObject').mockResolvedValue({
+    mock.method(s3Utils, 'getObject', async () => ({
       Body: {
         transformToString: async () => JSON.stringify(mockPool),
       } as any,
@@ -112,10 +118,10 @@ describe('processCardCounts job', () => {
         hassyncfailure: 'false',
         leaguename: 'Season 1',
       },
-    } as any);
+    }) as any);
 
-    const putSpy = jest.spyOn(s3Utils, 'putObject').mockResolvedValue({} as any);
-    const updateItemSpy = jest.spyOn(ddbUtils, 'updateItem').mockResolvedValue({} as any);
+    const putSpy = mock.method(s3Utils, 'putObject', async () => ({} as any));
+    const updateItemSpy = mock.method(ddbUtils, 'updateItem', async () => ({} as any));
 
     const event: S3Event = {
       Records: [
@@ -130,8 +136,8 @@ describe('processCardCounts job', () => {
 
     await handler(event);
 
-    expect(putSpy).toHaveBeenCalledTimes(1);
-    expect(putSpy).toHaveBeenCalledWith({
+    assert.equal(putSpy.mock.callCount(), 1);
+    assert.deepEqual(putSpy.mock.calls[0].arguments[0], {
       Body: JSON.stringify({
         'Opt': {
           mainboardQuantity: 4,
@@ -145,11 +151,11 @@ describe('processCardCounts job', () => {
       Key: 'counts/counts-uuid',
     });
 
-    expect(updateItemSpy).toHaveBeenCalledWith(
+    assert.deepEqual(updateItemSpy.mock.calls[0].arguments, [
       'test-league-table',
       { leaguename: 'Season 1' },
       { poolSyncError: false },
-    );
+    ]);
   });
 
   it('handler should fall back to DynamoDB lookup if S3 object metadata is missing', async () => {
@@ -167,14 +173,14 @@ describe('processCardCounts job', () => {
       },
     };
 
-    jest.spyOn(s3Utils, 'getObject').mockResolvedValue({
+    mock.method(s3Utils, 'getObject', async () => ({
       Body: {
         transformToString: async () => JSON.stringify(mockPool),
       } as any,
       Metadata: {},
-    } as any);
+    }) as any);
 
-    jest.spyOn(ddbUtils, 'listItems').mockResolvedValue({
+    mock.method(ddbUtils, 'listItems', async () => ({
       Items: [
         {
           cardCountsKey: 'fallback-counts-key',
@@ -184,10 +190,10 @@ describe('processCardCounts job', () => {
           poolSyncError: true,
         },
       ],
-    } as any);
+    }) as any);
 
-    const putSpy = jest.spyOn(s3Utils, 'putObject').mockResolvedValue({} as any);
-    const updateItemSpy = jest.spyOn(ddbUtils, 'updateItem').mockResolvedValue({} as any);
+    const putSpy = mock.method(s3Utils, 'putObject', async () => ({} as any));
+    const updateItemSpy = mock.method(ddbUtils, 'updateItem', async () => ({} as any));
 
     const event: S3Event = {
       Records: [
@@ -202,7 +208,7 @@ describe('processCardCounts job', () => {
 
     await handler(event);
 
-    expect(putSpy).toHaveBeenCalledWith({
+    assert.deepEqual(putSpy.mock.calls[0].arguments[0], {
       Body: JSON.stringify({
         'Ponder': {
           mainboardQuantity: 4,
@@ -215,10 +221,10 @@ describe('processCardCounts job', () => {
       Key: 'counts/fallback-counts-key',
     });
 
-    expect(updateItemSpy).toHaveBeenCalledWith(
+    assert.deepEqual(updateItemSpy.mock.calls[0].arguments, [
       'test-league-table',
       { leaguename: 'Legacy Season' },
       { poolSyncError: true },
-    );
+    ]);
   });
 });

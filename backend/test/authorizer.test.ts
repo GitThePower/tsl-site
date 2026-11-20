@@ -1,3 +1,5 @@
+import * as assert from 'node:assert/strict';
+import { after, afterEach, beforeEach, describe, it, mock } from 'node:test';
 import { APIGatewayRequestAuthorizerEvent } from 'aws-lambda';
 import { handler } from '../src/authorizer';
 import * as ddbUtils from '../src/utils/ddb';
@@ -28,17 +30,22 @@ describe('API Gateway RequestAuthorizer', () => {
       SESSION_TABLE_NAME: 'test-session-table',
       USER_TABLE_NAME: 'test-user-table',
     };
-    jest.restoreAllMocks();
+    mock.restoreAll();
   });
 
-  afterAll(() => {
+  afterEach(() => {
+    mock.restoreAll();
+  });
+
+  after(() => {
     process.env = originalEnv;
   });
 
   it('should throw Unauthorized when no valid API key or session header is present', async () => {
-    await expect(
+    await assert.rejects(
       handler(makeAuthEvent({ headers: { 'X-Api-Key': 'frontend-key' } })),
-    ).rejects.toThrow('Unauthorized');
+      { message: 'Unauthorized' },
+    );
   });
 
   it('should allow requests with the configured ADMIN_API_KEY', async () => {
@@ -50,19 +57,18 @@ describe('API Gateway RequestAuthorizer', () => {
       }),
     );
 
-    expect(result.principalId).toBe('admin-api-key');
-    expect(result.policyDocument.Statement[0]).toMatchObject({
-      Action: 'execute-api:Invoke',
-      Effect: 'Allow',
-    });
-    expect(result.context).toEqual({
+    assert.equal(result.principalId, 'admin-api-key');
+    const statement = result.policyDocument.Statement[0] as { Action: string; Effect: string };
+    assert.equal(statement.Action, 'execute-api:Invoke');
+    assert.equal(statement.Effect, 'Allow');
+    assert.deepEqual(result.context, {
       isAdmin: 'true',
       username: '',
     });
   });
 
   it('should allow an admin session on admin-only routes', async () => {
-    jest.spyOn(ddbUtils, 'getItem').mockImplementation(async (tableName: string) => {
+    mock.method(ddbUtils, 'getItem', async (tableName: string) => {
       if (tableName === 'test-session-table') {
         return {
           Item: {
@@ -88,16 +94,16 @@ describe('API Gateway RequestAuthorizer', () => {
       }),
     );
 
-    expect(result.principalId).toBe('henry');
-    expect(result.policyDocument.Statement[0]).toMatchObject({ Effect: 'Allow' });
-    expect(result.context).toEqual({
+    assert.equal(result.principalId, 'henry');
+    assert.equal((result.policyDocument.Statement[0] as { Effect: string }).Effect, 'Allow');
+    assert.deepEqual(result.context, {
       isAdmin: 'true',
       username: 'henry',
     });
   });
 
   it('should allow a player session on self-service routes and deny on admin-only routes', async () => {
-    jest.spyOn(ddbUtils, 'getItem').mockImplementation(async (tableName: string) => {
+    mock.method(ddbUtils, 'getItem', async (tableName: string) => {
       if (tableName === 'test-session-table') {
         return {
           Item: {
@@ -122,8 +128,8 @@ describe('API Gateway RequestAuthorizer', () => {
         resource: '/user',
       }),
     );
-    expect(allowedResult.policyDocument.Statement[0]).toMatchObject({ Effect: 'Allow' });
-    expect(allowedResult.context).toEqual({
+    assert.equal((allowedResult.policyDocument.Statement[0] as { Effect: string }).Effect, 'Allow');
+    assert.deepEqual(allowedResult.context, {
       isAdmin: 'false',
       username: 'alice',
     });
@@ -135,38 +141,40 @@ describe('API Gateway RequestAuthorizer', () => {
         resource: '/user',
       }),
     );
-    expect(deniedResult.policyDocument.Statement[0]).toMatchObject({ Effect: 'Deny' });
-    expect(deniedResult.context).toEqual({
+    assert.equal((deniedResult.policyDocument.Statement[0] as { Effect: string }).Effect, 'Deny');
+    assert.deepEqual(deniedResult.context, {
       isAdmin: 'false',
       username: 'alice',
     });
   });
 
   it('should throw Unauthorized for expired sessions or missing users', async () => {
-    jest.spyOn(ddbUtils, 'getItem').mockResolvedValueOnce({
+    const getItemMock = mock.method(ddbUtils, 'getItem');
+    getItemMock.mock.mockImplementationOnce(async () => ({
       Item: {
         expiration: `${Date.now() - 1000}`,
         sessionid: 'expired-sess',
         username: 'alice',
       },
-    });
+    }), 0);
 
-    await expect(
+    await assert.rejects(
       handler(makeAuthEvent({ headers: { 'X-Session-Id': 'expired-sess' } })),
-    ).rejects.toThrow('Unauthorized');
+      { message: 'Unauthorized' },
+    );
 
-    jest.spyOn(ddbUtils, 'getItem')
-      .mockResolvedValueOnce({
-        Item: {
-          expiration: `${Date.now() + 60_000}`,
-          sessionid: 'orphan-sess',
-          username: 'deleted-user',
-        },
-      })
-      .mockResolvedValueOnce({ Item: null });
+    getItemMock.mock.mockImplementationOnce(async () => ({
+      Item: {
+        expiration: `${Date.now() + 60_000}`,
+        sessionid: 'orphan-sess',
+        username: 'deleted-user',
+      },
+    }), 1);
+    getItemMock.mock.mockImplementationOnce(async () => ({ Item: null }), 2);
 
-    await expect(
+    await assert.rejects(
       handler(makeAuthEvent({ headers: { 'X-Session-Id': 'orphan-sess' } })),
-    ).rejects.toThrow('Unauthorized');
+      { message: 'Unauthorized' },
+    );
   });
 });

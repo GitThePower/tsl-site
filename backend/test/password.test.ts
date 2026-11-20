@@ -1,3 +1,5 @@
+import * as assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
 import {
   hashPassword,
   isHashedPassword,
@@ -9,25 +11,25 @@ describe('password utilities', () => {
     const hashA = hashPassword('secret-pass');
     const hashB = hashPassword('secret-pass');
 
-    expect(isHashedPassword(hashA)).toBe(true);
-    expect(isHashedPassword(hashB)).toBe(true);
-    expect(hashA).not.toBe(hashB);
-    expect(hashA.startsWith('$scrypt$')).toBe(true);
+    assert.equal(isHashedPassword(hashA), true);
+    assert.equal(isHashedPassword(hashB), true);
+    assert.notEqual(hashA, hashB);
+    assert.equal(hashA.startsWith('$scrypt$'), true);
   });
 
   it('should verify matching hashed passwords and reject mismatches', () => {
     const hashed = hashPassword('correct-horse-battery');
 
-    expect(verifyPassword('correct-horse-battery', hashed)).toBe(true);
-    expect(verifyPassword('wrong-password', hashed)).toBe(false);
-    expect(verifyPassword('anything', undefined)).toBe(false);
-    expect(verifyPassword('anything', '')).toBe(false);
+    assert.equal(verifyPassword('correct-horse-battery', hashed), true);
+    assert.equal(verifyPassword('wrong-password', hashed), false);
+    assert.equal(verifyPassword('anything', undefined), false);
+    assert.equal(verifyPassword('anything', ''), false);
   });
 
   it('should support legacy plaintext passwords while reporting them as unhashed', () => {
-    expect(isHashedPassword('plaintext-123')).toBe(false);
-    expect(isHashedPassword('$scrypt$onlyone')).toBe(false);
-    expect(verifyPassword('plaintext-123', 'plaintext-123')).toBe(true);
-    expect(verifyPassword('other', 'plaintext-123')).toBe(false);
+    assert.equal(isHashedPassword('plaintext-123'), false);
+    assert.equal(isHashedPassword('$scrypt$onlyone'), false);
+    assert.equal(verifyPassword('plaintext-123', 'plaintext-123'), true);
+    assert.equal(verifyPassword('other', 'plaintext-123'), false);
   });
 });

@@ -20,10 +20,11 @@
     "inlineSources": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
+    "skipLibCheck": true,
     "typeRoots": [
       "./node_modules/@types"
     ],
-    "types": ["jest", "node"]
+    "types": ["node"]
   },
   "exclude": [
     "node_modules",

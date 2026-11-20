@@ -1,3 +1,5 @@
+import * as assert from 'node:assert/strict';
+import { after, afterEach, beforeEach, describe, it, mock } from 'node:test';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { handler } from '../src/resources/user';
 import * as ddbUtils from '../src/utils/ddb';
@@ -27,21 +29,25 @@ describe('user resource Lambda', () => {
       ...originalEnv,
       DB_TABLE_NAME: 'test-user-table',
     };
-    jest.restoreAllMocks();
+    mock.restoreAll();
   });
 
-  afterAll(() => {
+  afterEach(() => {
+    mock.restoreAll();
+  });
+
+  after(() => {
     process.env = originalEnv;
   });
 
   it('GET /user should mask passwords and default roles to player', async () => {
-    jest.spyOn(ddbUtils, 'getItem').mockResolvedValue({
+    mock.method(ddbUtils, 'getItem', async () => ({
       Item: {
         leagues: [{ decklistUrl: 'https://moxfield.com/decks/abc', leaguename: 'Season 1' }],
         password: 'super-secret-password',
         username: 'alice',
       },
-    });
+    }));
 
     const res = await handler(
       makeEvent({
@@ -50,8 +56,8 @@ describe('user resource Lambda', () => {
       }),
     );
 
-    expect(res.statusCode).toBe(200);
-    expect(JSON.parse(res.body)).toEqual({
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(JSON.parse(res.body), {
       leagues: [{ decklistUrl: 'https://moxfield.com/decks/abc', leaguename: 'Season 1' }],
       password: '[ HIDDEN ]',
       roles: ['player'],
@@ -67,11 +73,11 @@ describe('user resource Lambda', () => {
         requestContext: { authorizer: { isAdmin: 'false', username: 'alice' } } as any,
       }),
     );
-    expect(nonAdminRes.statusCode).toBe(403);
+    assert.equal(nonAdminRes.statusCode, 403);
 
-    jest.spyOn(ddbUtils, 'getItem').mockResolvedValueOnce({
+    mock.method(ddbUtils, 'getItem', async () => ({
       Item: { username: 'existing' },
-    });
+    }));
     const dupRes = await handler(
       makeEvent({
         body: JSON.stringify({ password: 'pw', username: 'existing' }),
@@ -79,10 +85,12 @@ describe('user resource Lambda', () => {
         requestContext: { authorizer: { isAdmin: 'true', username: 'henry' } } as any,
       }),
     );
-    expect(dupRes.statusCode).toBe(409);
+    assert.equal(dupRes.statusCode, 409);
 
-    jest.spyOn(ddbUtils, 'getItem').mockResolvedValueOnce({ Item: null });
-    const createSpy = jest.spyOn(ddbUtils, 'createItem').mockResolvedValue();
+    mock.restoreAll();
+
+    mock.method(ddbUtils, 'getItem', async () => ({ Item: null }));
+    const createSpy = mock.method(ddbUtils, 'createItem', async () => {});
 
     const okRes = await handler(
       makeEvent({
@@ -96,25 +104,25 @@ describe('user resource Lambda', () => {
       }),
     );
 
-    expect(okRes.statusCode).toBe(200);
-    expect(createSpy).toHaveBeenCalledTimes(1);
-    const savedUser = createSpy.mock.calls[0][1];
-    expect(savedUser.username).toBe('bob');
-    expect(savedUser.roles).toEqual(['player']);
-    expect(isHashedPassword(savedUser.password)).toBe(true);
-    expect(JSON.parse(okRes.body).password).toBe('[ HIDDEN ]');
+    assert.equal(okRes.statusCode, 200);
+    assert.equal(createSpy.mock.callCount(), 1);
+    const savedUser = createSpy.mock.calls[0].arguments[1];
+    assert.equal(savedUser.username, 'bob');
+    assert.deepEqual(savedUser.roles, ['player']);
+    assert.equal(isHashedPassword(savedUser.password), true);
+    assert.equal(JSON.parse(okRes.body).password, '[ HIDDEN ]');
   });
 
   it('PUT /user should enforce self-update rules for players and allow admin updates', async () => {
     const storedHash = hashPassword('old-pass');
-    jest.spyOn(ddbUtils, 'getItem').mockResolvedValue({
+    mock.method(ddbUtils, 'getItem', async () => ({
       Item: {
         leagues: [],
         password: storedHash,
         roles: ['player'],
         username: 'alice',
       },
-    });
+    }));
 
     const otherUserForbidden = await handler(
       makeEvent({
@@ -124,7 +132,7 @@ describe('user resource Lambda', () => {
         requestContext: { authorizer: { isAdmin: 'false', username: 'bob' } } as any,
       }),
     );
-    expect(otherUserForbidden.statusCode).toBe(403);
+    assert.equal(otherUserForbidden.statusCode, 403);
 
     const roleEscalationForbidden = await handler(
       makeEvent({
@@ -134,7 +142,7 @@ describe('user resource Lambda', () => {
         requestContext: { authorizer: { isAdmin: 'false', username: 'alice' } } as any,
       }),
     );
-    expect(roleEscalationForbidden.statusCode).toBe(403);
+    assert.equal(roleEscalationForbidden.statusCode, 403);
 
     const wrongCurrPassword = await handler(
       makeEvent({
@@ -144,16 +152,16 @@ describe('user resource Lambda', () => {
         requestContext: { authorizer: { isAdmin: 'false', username: 'alice' } } as any,
       }),
     );
-    expect(wrongCurrPassword.statusCode).toBe(403);
+    assert.equal(wrongCurrPassword.statusCode, 403);
 
-    const updateSpy = jest.spyOn(ddbUtils, 'updateItem').mockResolvedValue({
+    const updateSpy = mock.method(ddbUtils, 'updateItem', async () => ({
       Item: {
         leagues: [],
         password: hashPassword('new-pass'),
         roles: ['player'],
         username: 'alice',
       },
-    });
+    }));
 
     const playerPassChange = await handler(
       makeEvent({
@@ -163,9 +171,9 @@ describe('user resource Lambda', () => {
         requestContext: { authorizer: { isAdmin: 'false', username: 'alice' } } as any,
       }),
     );
-    expect(playerPassChange.statusCode).toBe(200);
-    expect(isHashedPassword(updateSpy.mock.calls[0][2].password)).toBe(true);
-    expect(updateSpy.mock.calls[0][2].currentPassword).toBeUndefined();
+    assert.equal(playerPassChange.statusCode, 200);
+    assert.equal(isHashedPassword(updateSpy.mock.calls[0].arguments[2].password), true);
+    assert.equal(updateSpy.mock.calls[0].arguments[2].currentPassword, undefined);
 
     const selfDemoteRes = await handler(
       makeEvent({
@@ -175,7 +183,7 @@ describe('user resource Lambda', () => {
         requestContext: { authorizer: { isAdmin: 'true', username: 'alice' } } as any,
       }),
     );
-    expect(selfDemoteRes.statusCode).toBe(400);
+    assert.equal(selfDemoteRes.statusCode, 400);
   });
 
   it('DELETE /user should delete by username query param and guard self-deletion', async () => {
@@ -186,15 +194,15 @@ describe('user resource Lambda', () => {
         requestContext: { authorizer: { isAdmin: 'true', username: 'henry' } } as any,
       }),
     );
-    expect(selfDeleteRes.statusCode).toBe(400);
+    assert.equal(selfDeleteRes.statusCode, 400);
 
-    const deleteSpy = jest.spyOn(ddbUtils, 'deleteItem').mockResolvedValue({
+    const deleteSpy = mock.method(ddbUtils, 'deleteItem', async () => ({
       Item: {
         password: 'hashed',
         roles: ['player'],
         username: 'alice',
       },
-    });
+    }));
 
     const okRes = await handler(
       makeEvent({
@@ -203,8 +211,8 @@ describe('user resource Lambda', () => {
         requestContext: { authorizer: { isAdmin: 'true', username: 'henry' } } as any,
       }),
     );
-    expect(okRes.statusCode).toBe(200);
-    expect(deleteSpy).toHaveBeenCalledWith('test-user-table', { username: 'alice' });
-    expect(JSON.parse(okRes.body).password).toBe('[ HIDDEN ]');
+    assert.equal(okRes.statusCode, 200);
+    assert.deepEqual(deleteSpy.mock.calls[0].arguments, ['test-user-table', { username: 'alice' }]);
+    assert.equal(JSON.parse(okRes.body).password, '[ HIDDEN ]');
   });
 });

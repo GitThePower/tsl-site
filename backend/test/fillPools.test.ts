@@ -1,3 +1,5 @@
+import * as assert from 'node:assert/strict';
+import { afterEach, beforeEach, describe, it, mock } from 'node:test';
 import {
   buildGatewayUrl,
   formatCardCounts,
@@ -16,11 +18,17 @@ import * as ddbUtils from '../src/utils/ddb';
 import * as s3Utils from '../src/utils/s3';
 
 describe('fillPools and LeagueSchema', () => {
+  const originalEnv = process.env;
   const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    mock.restoreAll();
+  });
 
   afterEach(() => {
     global.fetch = originalFetch;
-    jest.restoreAllMocks();
+    process.env = originalEnv;
+    mock.restoreAll();
   });
 
   it('LeagueSchema should validate objects with cardCounts, cardCountsKey, and poolSyncError', () => {
@@ -54,26 +62,30 @@ describe('fillPools and LeagueSchema', () => {
     };
 
     const parsed = LeagueSchema.parse(validLeague);
-    expect(parsed.leaguename).toBe('Season 1');
-    expect(parsed.cardCountsKey).toBe('counts-uuid');
-    expect(parsed.cardCounts?.['Lightning Bolt'].quantity).toBe(4);
-    expect(parsed.poolSyncError).toBe(true);
+    assert.equal(parsed.leaguename, 'Season 1');
+    assert.equal(parsed.cardCountsKey, 'counts-uuid');
+    assert.equal(parsed.cardCounts?.['Lightning Bolt'].quantity, 4);
+    assert.equal(parsed.poolSyncError, true);
   });
 
   it('buildGatewayUrl should construct URLs for scraperapi, scrapedo, scrapingant, and scrapingbee', () => {
     const target = 'https://api2.moxfield.com/v3/decks/all/abc123';
     const encoded = encodeURIComponent(target);
 
-    expect(buildGatewayUrl(target, 'key1', 'scraperapi')).toBe(
+    assert.equal(
+      buildGatewayUrl(target, 'key1', 'scraperapi'),
       `https://api.scraperapi.com?api_key=key1&url=${encoded}`,
     );
-    expect(buildGatewayUrl(target, 'key2', 'scrapedo')).toBe(
+    assert.equal(
+      buildGatewayUrl(target, 'key2', 'scrapedo'),
       `https://api.scrape.do?token=key2&url=${encoded}`,
     );
-    expect(buildGatewayUrl(target, 'key3', 'scrapingant')).toBe(
+    assert.equal(
+      buildGatewayUrl(target, 'key3', 'scrapingant'),
       `https://api.scrapingant.com/v2/general?url=${encoded}&x-api-key=key3&browser=false`,
     );
-    expect(buildGatewayUrl(target, 'key4', 'scrapingbee')).toBe(
+    assert.equal(
+      buildGatewayUrl(target, 'key4', 'scrapingbee'),
       `https://app.scrapingbee.com/api/v1/?api_key=key4&url=${encoded}&render_js=false`,
     );
   });
@@ -86,15 +98,15 @@ describe('fillPools and LeagueSchema', () => {
       scrapingbee: 'bee-key',
     });
 
-    expect(parseGatewayCredentials(jsonSecret)).toEqual([
+    assert.deepEqual(parseGatewayCredentials(jsonSecret), [
       { apiKey: 'sa-key', provider: 'scraperapi' },
       { apiKey: 'do-key', provider: 'scrapedo' },
       { apiKey: 'ant-key', provider: 'scrapingant' },
       { apiKey: 'bee-key', provider: 'scrapingbee' },
     ]);
 
-    expect(() => parseGatewayCredentials('not-json')).toThrow();
-    expect(parseGatewayCredentials('')).toEqual([]);
+    assert.throws(() => parseGatewayCredentials('not-json'));
+    assert.deepEqual(parseGatewayCredentials(''), []);
   });
 
   it('getMoxfieldContent should immediately fail over on 403 and mark provider exhausted without retrying it', async () => {
@@ -106,18 +118,18 @@ describe('fillPools and LeagueSchema', () => {
       },
     };
 
-    const fetchMock = jest.fn()
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 403,
-        text: async () => 'Out of credits',
-      })
-      .mockResolvedValueOnce({
-        json: async () => mockDeckResponse,
-        ok: true,
-        status: 200,
-      });
-    global.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = mock.fn<typeof fetch>();
+    fetchMock.mock.mockImplementationOnce(async () => ({
+      ok: false,
+      status: 403,
+      text: async () => 'Out of credits',
+    } as Response), 0);
+    fetchMock.mock.mockImplementationOnce(async () => ({
+      json: async () => mockDeckResponse,
+      ok: true,
+      status: 200,
+    } as Response), 1);
+    global.fetch = fetchMock;
 
     const exhaustedProviders = new Set<GatewayProvider>();
     const credentials = [
@@ -131,12 +143,12 @@ describe('fillPools and LeagueSchema', () => {
       retryDelayMs: 1,
     });
 
-    expect(result.boards.mainboard.count).toBe(0);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[0][0]).toContain('api.scraperapi.com');
-    expect(fetchMock.mock.calls[1][0]).toContain('api.scrape.do');
-    expect(exhaustedProviders.has('scraperapi')).toBe(true);
-    expect(exhaustedProviders.has('scrapedo')).toBe(false);
+    assert.equal(result.boards.mainboard.count, 0);
+    assert.equal(fetchMock.mock.callCount(), 2);
+    assert.ok(String(fetchMock.mock.calls[0].arguments[0]).includes('api.scraperapi.com'));
+    assert.ok(String(fetchMock.mock.calls[1].arguments[0]).includes('api.scrape.do'));
+    assert.equal(exhaustedProviders.has('scraperapi'), true);
+    assert.equal(exhaustedProviders.has('scrapedo'), false);
   });
 
   it('getMoxfieldContent should retry once on 429 before failing over to the next provider', async () => {
@@ -148,23 +160,23 @@ describe('fillPools and LeagueSchema', () => {
       },
     };
 
-    const fetchMock = jest.fn()
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 429,
-        text: async () => 'Rate limit',
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 429,
-        text: async () => 'Rate limit again',
-      })
-      .mockResolvedValueOnce({
-        json: async () => mockDeckResponse,
-        ok: true,
-        status: 200,
-      });
-    global.fetch = fetchMock as unknown as typeof fetch;
+    const fetchMock = mock.fn<typeof fetch>();
+    fetchMock.mock.mockImplementationOnce(async () => ({
+      ok: false,
+      status: 429,
+      text: async () => 'Rate limit',
+    } as Response), 0);
+    fetchMock.mock.mockImplementationOnce(async () => ({
+      ok: false,
+      status: 429,
+      text: async () => 'Rate limit again',
+    } as Response), 1);
+    fetchMock.mock.mockImplementationOnce(async () => ({
+      json: async () => mockDeckResponse,
+      ok: true,
+      status: 200,
+    } as Response), 2);
+    global.fetch = fetchMock;
 
     const credentials = [
       { apiKey: 'sa-key', provider: 'scraperapi' as const },
@@ -177,11 +189,11 @@ describe('fillPools and LeagueSchema', () => {
       retryDelayMs: 1,
     });
 
-    expect(result.boards.mainboard.count).toBe(0);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls[0][0]).toContain('api.scraperapi.com');
-    expect(fetchMock.mock.calls[1][0]).toContain('api.scraperapi.com');
-    expect(fetchMock.mock.calls[2][0]).toContain('api.scrapingant.com');
+    assert.equal(result.boards.mainboard.count, 0);
+    assert.equal(fetchMock.mock.callCount(), 3);
+    assert.ok(String(fetchMock.mock.calls[0].arguments[0]).includes('api.scraperapi.com'));
+    assert.ok(String(fetchMock.mock.calls[1].arguments[0]).includes('api.scraperapi.com'));
+    assert.ok(String(fetchMock.mock.calls[2].arguments[0]).includes('api.scrapingant.com'));
   });
 
   it('getMoxfieldContent should parse cards with omitted mana_cost and optional card_faces', async () => {
@@ -218,31 +230,31 @@ describe('fillPools and LeagueSchema', () => {
       },
     };
 
-    const fetchMock = jest.fn().mockResolvedValueOnce({
+    const fetchMock = mock.fn<typeof fetch>(async () => ({
       json: async () => mockDeckResponse,
       ok: true,
       status: 200,
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
+    } as Response));
+    global.fetch = fetchMock;
 
     const result = await getMoxfieldContent('https://moxfield.com/decks/testDeckId', {
       credentials: [{ apiKey: 'sa-key', provider: 'scraperapi' }],
       retryDelayMs: 1,
     });
 
-    expect(result.boards.mainboard.cards.land1.card.mana_cost).toBeUndefined();
-    expect(result.boards.mainboard.cards.dfc1.card.card_faces).toHaveLength(2);
+    assert.equal(result.boards.mainboard.cards.land1.card.mana_cost, undefined);
+    assert.equal(result.boards.mainboard.cards.dfc1.card.card_faces?.length, 2);
   });
 
   it('getMoxfieldContent should fail fast on ZodError without retrying or failing over', async () => {
-    const fetchMock = jest.fn().mockResolvedValue({
+    const fetchMock = mock.fn<typeof fetch>(async () => ({
       json: async () => ({ unexpected: 'shape' }),
       ok: true,
       status: 200,
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
+    } as Response));
+    global.fetch = fetchMock;
 
-    await expect(
+    await assert.rejects(
       getMoxfieldContent('https://moxfield.com/decks/testDeckId', {
         credentials: [
           { apiKey: 'sa-key', provider: 'scraperapi' },
@@ -251,9 +263,9 @@ describe('fillPools and LeagueSchema', () => {
         maxRetries: 2,
         retryDelayMs: 1,
       }),
-    ).rejects.toThrow();
+    );
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    assert.equal(fetchMock.mock.callCount(), 1);
   });
 
   it('formatCardPool should ignore basic lands and combine quantities within boards', () => {
@@ -314,11 +326,11 @@ describe('fillPools and LeagueSchema', () => {
     };
 
     const pool = formatCardPool(mockMoxfieldPool);
-    expect(pool.user1.cardList['Mountain']).toBeUndefined();
-    expect(pool.user1.cardList['Lightning Bolt']).toBeDefined();
-    expect(pool.user1.cardList['Lightning Bolt'].quantity).toBe(4);
-    expect(pool.user1.cardList['Lightning Bolt'].mainboardQuantity).toBe(3);
-    expect(pool.user1.colors).toEqual(['R']);
+    assert.equal(pool.user1.cardList['Mountain'], undefined);
+    assert.notEqual(pool.user1.cardList['Lightning Bolt'], undefined);
+    assert.equal(pool.user1.cardList['Lightning Bolt'].quantity, 4);
+    assert.equal(pool.user1.cardList['Lightning Bolt'].mainboardQuantity, 3);
+    assert.deepEqual(pool.user1.colors, ['R']);
   });
 
   it('formatCardCounts should aggregate card quantities across all users and sort alphabetically', () => {
@@ -366,21 +378,20 @@ describe('fillPools and LeagueSchema', () => {
     const counts = formatCardCounts(mockCardPool);
     const parsedCounts = MagicCardCountsSchema.parse(counts);
 
-    expect(Object.keys(parsedCounts)).toEqual([
+    assert.deepEqual(Object.keys(parsedCounts), [
       'Counterspell',
       'Dark Ritual',
       'Lightning Bolt',
     ]);
-    expect(parsedCounts['Counterspell'].quantity).toBe(2);
-    expect(parsedCounts['Counterspell'].mainboardQuantity).toBe(2);
-    expect(parsedCounts['Dark Ritual'].quantity).toBe(4);
-    expect(parsedCounts['Dark Ritual'].mainboardQuantity).toBe(4);
-    expect(parsedCounts['Lightning Bolt'].quantity).toBe(4);
-    expect(parsedCounts['Lightning Bolt'].mainboardQuantity).toBe(3);
+    assert.equal(parsedCounts['Counterspell'].quantity, 2);
+    assert.equal(parsedCounts['Counterspell'].mainboardQuantity, 2);
+    assert.equal(parsedCounts['Dark Ritual'].quantity, 4);
+    assert.equal(parsedCounts['Dark Ritual'].mainboardQuantity, 4);
+    assert.equal(parsedCounts['Lightning Bolt'].quantity, 4);
+    assert.equal(parsedCounts['Lightning Bolt'].mainboardQuantity, 3);
   });
 
   it('handler should fetch decklists and write raw envelope to S3', async () => {
-    const originalEnv = process.env;
     process.env = {
       ...originalEnv,
       GATEWAY_PROVIDER: 'scraperapi',
@@ -390,7 +401,7 @@ describe('fillPools and LeagueSchema', () => {
       USER_TABLE_NAME: 'test-user-table',
     };
 
-    jest.spyOn(ddbUtils, 'listItems').mockImplementation(async (tableName: string) => {
+    mock.method(ddbUtils, 'listItems', async (tableName: string) => {
       if (tableName === 'test-league-table') {
         return {
           Items: [
@@ -424,7 +435,7 @@ describe('fillPools and LeagueSchema', () => {
       } as any;
     });
 
-    global.fetch = jest.fn().mockResolvedValue({
+    global.fetch = mock.fn<typeof fetch>(async () => ({
       json: async () => ({
         boards: {
           mainboard: { cards: {}, count: 0 },
@@ -434,17 +445,20 @@ describe('fillPools and LeagueSchema', () => {
       }),
       ok: true,
       status: 200,
-    } as any);
+    } as Response));
 
-    const putSpy = jest.spyOn(s3Utils, 'putObject').mockResolvedValue({} as any);
+    const putSpy = mock.method(s3Utils, 'putObject', async () => ({} as any));
 
     await handler();
 
-    expect(putSpy).toHaveBeenCalledTimes(1);
-    const putCall = putSpy.mock.calls[0][0];
-    expect(putCall.Bucket).toBe('test-league-bucket');
-    expect(putCall.Key).toBe('raw/Season 1.json');
-    expect(JSON.parse(putCall.Body as string)).toEqual({
+    assert.equal(putSpy.mock.callCount(), 1);
+    const putCall = putSpy.mock.calls[0].arguments[0];
+    if (!putCall) {
+      assert.fail('Expected putObject to be called with input');
+    }
+    assert.equal(putCall.Bucket, 'test-league-bucket');
+    assert.equal(putCall.Key, 'raw/Season 1.json');
+    assert.deepEqual(JSON.parse(putCall.Body as string), {
       cardCountsKey: 'counts-uuid-1',
       cardPoolKey: 'pool-uuid-1',
       hasSyncFailure: false,
@@ -462,12 +476,9 @@ describe('fillPools and LeagueSchema', () => {
         },
       },
     });
-
-    process.env = originalEnv;
   });
 
   it('handler should mark poolSyncError in DynamoDB if S3 putObject fails', async () => {
-    const originalEnv = process.env;
     process.env = {
       ...originalEnv,
       GATEWAY_PROVIDER: 'scraperapi',
@@ -477,7 +488,7 @@ describe('fillPools and LeagueSchema', () => {
       USER_TABLE_NAME: 'test-user-table',
     };
 
-    jest.spyOn(ddbUtils, 'listItems').mockImplementation(async (tableName: string) => {
+    mock.method(ddbUtils, 'listItems', async (tableName: string) => {
       if (tableName === 'test-league-table') {
         return {
           Items: [
@@ -493,17 +504,17 @@ describe('fillPools and LeagueSchema', () => {
       return { Items: [] } as any;
     });
 
-    jest.spyOn(s3Utils, 'putObject').mockRejectedValue(new Error('S3 network error'));
-    const updateItemSpy = jest.spyOn(ddbUtils, 'updateItem').mockResolvedValue({} as any);
+    mock.method(s3Utils, 'putObject', async () => {
+      throw new Error('S3 network error');
+    });
+    const updateItemSpy = mock.method(ddbUtils, 'updateItem', async () => ({} as any));
 
     await handler();
 
-    expect(updateItemSpy).toHaveBeenCalledWith(
+    assert.deepEqual(updateItemSpy.mock.calls[0].arguments, [
       'test-league-table',
       { leaguename: 'Failing S3 Season' },
       { poolSyncError: true },
-    );
-
-    process.env = originalEnv;
+    ]);
   });
 });
