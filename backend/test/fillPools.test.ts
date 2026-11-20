@@ -145,8 +145,8 @@ describe('fillPools and LeagueSchema', () => {
 
     assert.equal(result.boards.mainboard.count, 0);
     assert.equal(fetchMock.mock.callCount(), 2);
-    assert.ok(String(fetchMock.mock.calls[0].arguments[0]).includes('api.scraperapi.com'));
-    assert.ok(String(fetchMock.mock.calls[1].arguments[0]).includes('api.scrape.do'));
+    assert.equal(new URL(String(fetchMock.mock.calls[0].arguments[0])).hostname, 'api.scraperapi.com');
+    assert.equal(new URL(String(fetchMock.mock.calls[1].arguments[0])).hostname, 'api.scrape.do');
     assert.equal(exhaustedProviders.has('scraperapi'), true);
     assert.equal(exhaustedProviders.has('scrapedo'), false);
   });
@@ -191,9 +191,9 @@ describe('fillPools and LeagueSchema', () => {
 
     assert.equal(result.boards.mainboard.count, 0);
     assert.equal(fetchMock.mock.callCount(), 3);
-    assert.ok(String(fetchMock.mock.calls[0].arguments[0]).includes('api.scraperapi.com'));
-    assert.ok(String(fetchMock.mock.calls[1].arguments[0]).includes('api.scraperapi.com'));
-    assert.ok(String(fetchMock.mock.calls[2].arguments[0]).includes('api.scrapingant.com'));
+    assert.equal(new URL(String(fetchMock.mock.calls[0].arguments[0])).hostname, 'api.scraperapi.com');
+    assert.equal(new URL(String(fetchMock.mock.calls[1].arguments[0])).hostname, 'api.scraperapi.com');
+    assert.equal(new URL(String(fetchMock.mock.calls[2].arguments[0])).hostname, 'api.scrapingant.com');
   });
 
   it('getMoxfieldContent should parse cards with omitted mana_cost and optional card_faces', async () => {
