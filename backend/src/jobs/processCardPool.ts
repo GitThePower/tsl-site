@@ -60,6 +60,23 @@ export const resolveCardColors = (card: MoxfieldCardDetails): string[] => {
   );
 };
 
+export const resolveCardRarity = (card: MoxfieldCardDetails): string | undefined => {
+  if (card.rarity && card.rarity.trim().length > 0) {
+    return card.rarity.trim().toLowerCase();
+  }
+  return undefined;
+};
+
+export const resolveCardTypeLine = (card: MoxfieldCardDetails): string | undefined => {
+  if (card.type_line && card.type_line.trim().length > 0) {
+    return card.type_line.trim();
+  }
+  const faceTypeLines = (card.card_faces ?? [])
+    .map((face) => face.type_line?.trim() ?? '')
+    .filter((line) => line.length > 0);
+  return faceTypeLines.length > 0 ? faceTypeLines.join(' // ') : undefined;
+};
+
 export const formatCardPool = (leaguePool: MoxfieldPool): Record<string, MagicCardPool> => {
   const searchResults: Record<string, MagicCardPool> = {};
   Object.keys(leaguePool).forEach((username) => {
@@ -73,26 +90,41 @@ export const formatCardPool = (leaguePool: MoxfieldPool): Record<string, MagicCa
         if (BASIC_LAND_NAMES.includes(cardName)) {
           return;
         }
+        const cardCmc = typeof card.card.cmc === 'number' ? card.card.cmc : undefined;
         const cardColors = resolveCardColors(card.card);
+        const cardRarity = resolveCardRarity(card.card);
+        const cardTypeLine = resolveCardTypeLine(card.card);
         const manaCost = resolveCardManaCost(card.card);
         const mbQty = boardName === 'mainboard' ? card.quantity : 0;
         if (boardName === 'mainboard') {
           cardColors.forEach((c) => userColors.add(c));
         }
         if (cardName in userCardList) {
+          if (userCardList[cardName].cmc === undefined && cardCmc !== undefined) {
+            userCardList[cardName].cmc = cardCmc;
+          }
           if ((!userCardList[cardName].colors || userCardList[cardName].colors.length === 0) && cardColors.length > 0) {
             userCardList[cardName].colors = cardColors;
           }
           userCardList[cardName].mainboardQuantity = (userCardList[cardName].mainboardQuantity || 0) + mbQty;
           userCardList[cardName].quantity += card.quantity;
+          if (!userCardList[cardName].rarity && cardRarity !== undefined) {
+            userCardList[cardName].rarity = cardRarity;
+          }
+          if (!userCardList[cardName].type_line && cardTypeLine !== undefined) {
+            userCardList[cardName].type_line = cardTypeLine;
+          }
         } else {
           userCardList[cardName] = {
+            ...(cardCmc !== undefined ? { cmc: cardCmc } : {}),
             colors: cardColors,
             mainboardQuantity: mbQty,
             mana_cost: manaCost,
             name: cardName,
             quantity: card.quantity,
+            ...(cardRarity !== undefined ? { rarity: cardRarity } : {}),
             scryfall_id: card.card.scryfall_id ?? undefined,
+            ...(cardTypeLine !== undefined ? { type_line: cardTypeLine } : {}),
           };
         }
       });

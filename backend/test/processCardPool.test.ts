@@ -182,6 +182,89 @@ describe('processCardPool job', () => {
     assert.deepEqual(pool.user1.colors, ['W', 'U', 'R']);
   });
 
+  it('formatCardPool should capture cmc, normalized rarity, and type_line with card_faces fallback and cross-board backfill', () => {
+    const mockMoxfieldPool: MoxfieldPool = {
+      user1: {
+        decklistUrl: 'https://moxfield.com/decks/metadata-test',
+        moxfieldContent: {
+          boards: {
+            mainboard: {
+              cards: {
+                dfc: {
+                  card: {
+                    card_faces: [
+                      { colors: ['U'], mana_cost: '{1}{U}', type_line: 'Creature — Human Wizard' },
+                      { colors: ['U'], mana_cost: '', type_line: 'Creature — Human Insect' },
+                    ],
+                    cmc: 2,
+                    name: 'Delver of Secrets // Insectile Aberration',
+                    rarity: 'Common',
+                    type_line: null,
+                  },
+                  quantity: 2,
+                },
+                landZeroCmc: {
+                  card: {
+                    cmc: 0,
+                    colors: [],
+                    mana_cost: '',
+                    name: 'Command Tower',
+                    rarity: 'COMMON',
+                    type_line: 'Land',
+                  },
+                  quantity: 1,
+                },
+                splitBackfill: {
+                  card: {
+                    name: 'Opt',
+                  },
+                  quantity: 1,
+                },
+              },
+              count: 4,
+            },
+            maybeboard: { cards: {}, count: 0 },
+            sideboard: {
+              cards: {
+                optSideboard: {
+                  card: {
+                    cmc: 1,
+                    colors: ['U'],
+                    mana_cost: '{U}',
+                    name: 'Opt',
+                    rarity: 'Uncommon',
+                    type_line: 'Instant',
+                  },
+                  quantity: 2,
+                },
+              },
+              count: 2,
+            },
+          },
+        },
+      },
+    };
+
+    const pool = formatCardPool(mockMoxfieldPool);
+
+    assert.equal(pool.user1.cardList['Command Tower'].cmc, 0);
+    assert.equal(pool.user1.cardList['Command Tower'].rarity, 'common');
+    assert.equal(pool.user1.cardList['Command Tower'].type_line, 'Land');
+
+    assert.equal(pool.user1.cardList['Delver of Secrets // Insectile Aberration'].cmc, 2);
+    assert.equal(pool.user1.cardList['Delver of Secrets // Insectile Aberration'].rarity, 'common');
+    assert.equal(
+      pool.user1.cardList['Delver of Secrets // Insectile Aberration'].type_line,
+      'Creature — Human Wizard // Creature — Human Insect',
+    );
+
+    assert.equal(pool.user1.cardList['Opt'].quantity, 3);
+    assert.equal(pool.user1.cardList['Opt'].mainboardQuantity, 1);
+    assert.equal(pool.user1.cardList['Opt'].cmc, 1);
+    assert.equal(pool.user1.cardList['Opt'].rarity, 'uncommon');
+    assert.equal(pool.user1.cardList['Opt'].type_line, 'Instant');
+  });
+
   it('handler should read raw envelope from S3, format pool, and write to S3 with metadata', async () => {
     const rawEnvelope: RawPoolEnvelope = {
       cardCountsKey: 'counts-uuid',

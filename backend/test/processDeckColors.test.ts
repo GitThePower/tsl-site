@@ -165,18 +165,24 @@ describe('processDeckColors job', () => {
       alice: {
         cardList: {
           'Opt': {
+            cmc: 1,
             colors: ['U'],
             mainboardQuantity: 10,
             mana_cost: '{U}',
             name: 'Opt',
             quantity: 10,
+            rarity: 'common',
+            type_line: 'Instant',
           },
           'Shock': {
+            cmc: 1,
             colors: ['R'],
             mainboardQuantity: 1,
             mana_cost: '{R}',
             name: 'Shock',
             quantity: 1,
+            rarity: 'common',
+            type_line: 'Instant',
           },
         },
         colors: ['U', 'R'],
@@ -227,6 +233,9 @@ describe('processDeckColors job', () => {
     const parsedBody = JSON.parse(putCall.Body as string);
     // Shock was 1 out of 11 non-land cards (9.09% < 10%), so Red is excluded!
     assert.deepEqual(parsedBody.alice.colors, ['U']);
+    assert.equal(parsedBody.alice.cardList['Opt'].cmc, 1);
+    assert.equal(parsedBody.alice.cardList['Opt'].rarity, 'common');
+    assert.equal(parsedBody.alice.cardList['Opt'].type_line, 'Instant');
   });
 
   it('handler should update DynamoDB poolSyncError when an error occurs', async () => {

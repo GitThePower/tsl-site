@@ -28,7 +28,7 @@ export default defineConfig({
       '/proxy': {
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/proxy/, ''), // Remove the '/proxy' prefix
-        target: 'https://api.tslsite.com',
+        target: 'https://api.tavernsealedleague.com',
       },
     },
   },

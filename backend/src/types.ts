@@ -1,12 +1,15 @@
 import { z } from 'zod';
 
 const MagicCardSchema = z.object({
+  cmc: z.number().optional(),
   colors: z.array(z.string()).optional(),
   mainboardQuantity: z.number().optional(),
   mana_cost: z.string(),
   name: z.string(),
   quantity: z.number(),
+  rarity: z.string().optional(),
   scryfall_id: z.string().optional(),
+  type_line: z.string().optional(),
 });
 export type MagicCard = z.infer<typeof MagicCardSchema>;
 
@@ -23,6 +26,7 @@ export type MagicCardPool = z.infer<typeof MagicCardPoolSchema>;
 const MoxfieldCardFaceSchema = z.object({
   colors: z.array(z.string()).nullish(),
   mana_cost: z.string().nullish(),
+  type_line: z.string().nullish(),
 });
 
 const MoxfieldCardDetailsSchema = z.object({
@@ -31,8 +35,10 @@ const MoxfieldCardDetailsSchema = z.object({
   colors: z.array(z.string()).nullish(),
   mana_cost: z.string().nullish(),
   name: z.string(),
+  rarity: z.string().nullish(),
   scryfall_id: z.string().nullish(),
   set_name: z.string().nullish(),
+  type_line: z.string().nullish(),
 });
 export type MoxfieldCardDetails = z.infer<typeof MoxfieldCardDetailsSchema>;
 
