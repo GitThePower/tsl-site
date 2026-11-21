@@ -18,7 +18,16 @@ interface DecklistsProps {
 
 const Decklists = (props: DecklistsProps) => {
   const { league } = useContext(AppContext);
-  props.users.sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+  const leagueDecklists = props.users
+    .map((user) => ({
+      decklistUrl: league.leaguename
+        ? user.leagues?.find((userLeague) => userLeague.leaguename === league.leaguename)?.decklistUrl?.trim() || ''
+        : '',
+      username: user.username || '',
+    }))
+    .filter((entry) => Boolean(entry.decklistUrl))
+    .sort((a, b) => a.username.localeCompare(b.username));
+
   return (
     <Box sx={{ width: '100%', overflowY: 'auto' }}>
       <TableContainer component={Paper}>
@@ -30,19 +39,18 @@ const Decklists = (props: DecklistsProps) => {
             />
           </TableHead>
           <TableBody>
-            {props.users.map((user) => {
-              const decklistUrl = user.leagues?.find((userLeague) => userLeague.leaguename === league.leaguename)?.decklistUrl;
-              return <DecklistsRow
-                key={`${user.username}${v4()}`}
-                decklistUrl={decklistUrl || ''}
-                name={user.username || ''}
+            {leagueDecklists.map((entry) => (
+              <DecklistsRow
+                key={`${entry.username}${v4()}`}
+                decklistUrl={entry.decklistUrl}
+                name={entry.username}
               />
-            })}
+            ))}
           </TableBody>
         </Table>
       </TableContainer>
     </Box>
-  )
+  );
 };
 
 export default Decklists;
