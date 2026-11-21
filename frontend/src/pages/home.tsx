@@ -69,7 +69,7 @@ const Home = () => {
               <CircularProgress />
             </Box>
           ) : (
-            <>
+            <Box sx={{ p: 2 }}>
               {tabValue === 0 && (
                 <CardPool />
               )}
@@ -82,7 +82,7 @@ const Home = () => {
               {tabValue === 3 && (
                 <Box>TBD</Box>
               )}
-            </>
+            </Box>
           )}
         </Box>
       </main>
